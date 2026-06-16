@@ -243,7 +243,9 @@ h1, h2, h3, h4 { margin: 0; font-family: var(--font-disp); letter-spacing: -0.02
 }
 [data-density="compact"] .page-hero h1 { font-size: 26px; }
 .page-hero .subtitle { color: var(--fg-3); font-size: 14px; margin-top: 4px; }
-.hero-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.hero-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; justify-content: flex-end; }
+.date-actions { max-width: 760px; }
+.date-field { width: 170px; }
 .field { display: flex; flex-direction: column; gap: 4px; }
 .field label { font-size: 11.5px; color: var(--fg-3); font-weight: 500; letter-spacing: -.01em; }
 
@@ -330,6 +332,12 @@ h1, h2, h3, h4 { margin: 0; font-family: var(--font-disp); letter-spacing: -0.02
 .list-row .sub2 { font-size: 12px; color: var(--fg-3); font-weight: 400; margin-top: 2px; }
 .list-row .klass { font-size: 13.5px; color: var(--fg-2); font-variant-numeric: tabular-nums; }
 .list-row .chev { color: var(--fg-4); display: flex; }
+.status-stack {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
 
 /* Chips */
 .chip {
@@ -429,6 +437,12 @@ h1, h2, h3, h4 { margin: 0; font-family: var(--font-disp); letter-spacing: -0.02
 }
 .pilltabs button.on { background: var(--accent); color: #fff; }
 .pilltabs button:hover:not(.on) { background: var(--hover); }
+.manual-timetable-tabs {
+  margin: 4px 0 14px;
+}
+.manual-timetable-list {
+  margin-top: 0;
+}
 
 /* Banner */
 .banner {
@@ -468,7 +482,7 @@ h1, h2, h3, h4 { margin: 0; font-family: var(--font-disp); letter-spacing: -0.02
 /* Timetable grid */
 .tt-grid {
   display: grid;
-  grid-template-columns: 40px 90px 80px 80px 80px 1.2fr 1.2fr 40px;
+  grid-template-columns: 40px 90px 80px 80px 80px minmax(220px, 1fr) 40px;
   gap: 10px; align-items: center;
   padding: 10px 14px;
   border-bottom: 1px solid var(--sep);
@@ -477,6 +491,148 @@ h1, h2, h3, h4 { margin: 0; font-family: var(--font-disp); letter-spacing: -0.02
 .tt-grid.head { background: var(--panel-alt); color: var(--fg-3); font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; padding: 10px 14px; }
 .cell-input { min-width: 0; }
 .cell-input .input, .cell-input .select { padding: 6px 10px; font-size: 13px; }
+.neis-override {
+  margin-top: 6px;
+  color: var(--fg-3);
+  font-size: 12px;
+}
+.neis-override summary {
+  cursor: pointer;
+  list-style-position: inside;
+  line-height: 1.4;
+}
+.neis-override .input {
+  margin-top: 6px;
+  width: 100%;
+}
+.neis-import {
+  margin-bottom: 16px;
+}
+.neis-import-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 160px 90px 90px 1fr;
+  gap: 10px;
+  align-items: end;
+}
+.inline-error {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 69, 58, .08);
+  color: var(--red);
+  font-size: 13px;
+  font-weight: 600;
+}
+.neis-preview {
+  margin-top: 14px;
+  border-top: 1px solid var(--sep);
+  padding-top: 12px;
+}
+.neis-preview-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.neis-preview-head strong {
+  font-size: 14px;
+}
+.neis-preview-head span {
+  color: var(--fg-3);
+  font-size: 12px;
+  flex: 1;
+}
+.neis-preview-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+}
+.neis-preview-row {
+  display: grid;
+  grid-template-columns: auto 32px 56px 48px 1fr;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--sep);
+  border-radius: 10px;
+  background: var(--panel);
+  padding: 9px 10px;
+  text-align: left;
+}
+.neis-preview-row span {
+  color: var(--fg-3);
+  font-size: 12px;
+}
+.neis-preview-row strong {
+  font-size: 13px;
+}
+.neis-mode-card {
+  margin-bottom: 16px;
+}
+.api-key-row {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 14px;
+}
+.mode-help {
+  color: var(--fg-3);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+}
+.assigned-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.assigned-row {
+  display: grid;
+  grid-template-columns: 95px 80px minmax(140px, 1fr) minmax(140px, 1fr) minmax(160px, 1fr) 152px 40px;
+  gap: 8px;
+  align-items: center;
+}
+.assigned-row .input,
+.assigned-row .select {
+  padding: 8px 10px;
+  font-size: 13px;
+}
+.assigned-check-btn {
+  min-height: 36px;
+  justify-content: center;
+  white-space: nowrap;
+}
+.assigned-lookup-panel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  border: 1px solid var(--sep);
+  border-radius: 8px;
+  background: var(--panel-alt);
+  color: var(--fg-3);
+  font-size: 13px;
+  line-height: 1.45;
+  margin: -2px 0 6px 175px;
+  padding: 10px 12px;
+}
+.assigned-lookup-panel strong {
+  color: var(--fg-2);
+  font-size: 13px;
+}
+.lookup-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.lookup-error {
+  color: var(--red);
+  font-weight: 600;
+}
 
 /* Student roster grid */
 .sr-grid {
@@ -569,6 +725,33 @@ h1, h2, h3, h4 { margin: 0; font-family: var(--font-disp); letter-spacing: -0.02
 .sheet-head .st-t { font-weight: 600; font-size: 17px; letter-spacing: -.02em; }
 .sheet-head .st-s { font-size: 13px; color: var(--fg-3); margin-top: 3px; }
 .sheet-body { padding: 16px 20px; overflow: auto; flex: 1; }
+.save-summary-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 12px 0;
+  padding: 11px 12px;
+  border: 1px solid var(--sep);
+  border-radius: 12px;
+  background: var(--panel-alt);
+}
+.save-summary-box strong {
+  font-size: 12px;
+  color: var(--fg-2);
+}
+.save-summary-box span {
+  font-size: 13px;
+  color: var(--fg-3);
+  line-height: 1.4;
+}
+.save-summary-box.error {
+  border-color: rgba(255, 69, 58, .3);
+  background: rgba(255, 69, 58, .08);
+}
+.save-summary-box.error strong,
+.save-summary-box.error span {
+  color: var(--red);
+}
 .sheet-foot {
   display: flex; justify-content: flex-end; gap: 8px;
   padding: 12px 20px;
@@ -612,9 +795,7 @@ h1, h2, h3, h4 { margin: 0; font-family: var(--font-disp); letter-spacing: -0.02
 .stu-row[data-mark="present"] .state { background: var(--green); color: #fff; }
 .stu-row[data-mark="absent"]  .state { background: var(--red); color: #fff; }
 .stu-row[data-mark="absent"]  { background: color-mix(in srgb, var(--red) 6%, var(--bg)); }
-.stu-row[data-mark="late"]    .state { background: var(--orange); color: #fff; }
-.stu-row[data-mark="late"]    { background: color-mix(in srgb, var(--orange) 6%, var(--bg)); }
-.stu-row[data-mark="sick"]    .state { background: var(--purple); color: #fff; }
-.stu-row[data-mark="sick"]    { background: color-mix(in srgb, var(--purple) 6%, var(--bg)); }
+.stu-row[data-mark="excused"] .state { background: var(--orange); color: #fff; }
+.stu-row[data-mark="excused"] { background: color-mix(in srgb, var(--orange) 6%, var(--bg)); }
 
 /* ===== Tweaks panel is styled by the starter component, but tweak colors follow accent */

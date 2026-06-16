@@ -1,10 +1,11 @@
-/* global React */
+// @ts-nocheck -- verbatim JS->TSX port; incremental typing is a follow-up
+import React from "react";
 const { useState } = React;
 
 /* ---------- Icons (20x20 viewBox unless noted) ---------- */
-const Icon = ({ name, size = 18, stroke = 1.6 }) => {
+export const Icon = ({ name, size = 18, stroke = 1.6 }) => {
   const s = size;
-  const common = { width: s, height: s, viewBox: "0 0 20 20", fill: "none", stroke: "currentColor", strokeWidth: stroke, strokeLinecap: "round", strokeLinejoin: "round" };
+  const common = { width: s, height: s, viewBox: "0 0 20 20", fill: "none", stroke: "currentColor", strokeWidth: stroke, strokeLinecap: "round", strokeLinejoin: "round" } as React.SVGProps<SVGSVGElement>;
   switch (name) {
     case "bolt":     return <svg {...common}><path d="M11.5 2L4.5 11.2h4L8 18l7-9.4h-4L11.5 2z"/></svg>;
     case "gear":     return <svg {...common}><circle cx="10" cy="10" r="2.2"/><path d="M10 1.8v2M10 16.2v2M1.8 10h2M16.2 10h2M4.2 4.2l1.4 1.4M14.4 14.4l1.4 1.4M4.2 15.8l1.4-1.4M14.4 5.6l1.4-1.4"/></svg>;
@@ -27,6 +28,7 @@ const Icon = ({ name, size = 18, stroke = 1.6 }) => {
     case "chev-d":   return <svg {...common}><path d="M5 8l5 5 5-5"/></svg>;
     case "chev-l":   return <svg {...common}><path d="M12 5l-5 5 5 5"/></svg>;
     case "paste":    return <svg {...common}><rect x="6" y="3" width="8" height="3" rx="1"/><path d="M6 4.5H4.5A1.5 1.5 0 003 6v10.5A1.5 1.5 0 004.5 18h11a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H14"/></svg>;
+    case "upload":   return <svg {...common}><path d="M10 13V4M6.5 7.5L10 4l3.5 3.5"/><path d="M4 13.5v2A1.5 1.5 0 005.5 17h9a1.5 1.5 0 001.5-1.5v-2"/></svg>;
     case "search":   return <svg {...common}><circle cx="9" cy="9" r="5"/><path d="M13 13l3 3"/></svg>;
     case "sliders":  return <svg {...common}><path d="M3 6h14M3 14h14"/><circle cx="7" cy="6" r="1.8" fill="white"/><circle cx="13" cy="14" r="1.8" fill="white"/></svg>;
     case "school":   return <svg {...common}><path d="M10 3L2.5 6.5 10 10l7.5-3.5L10 3zM5 8.5V13c0 1.7 2.3 3 5 3s5-1.3 5-3V8.5"/></svg>;
@@ -37,18 +39,18 @@ const Icon = ({ name, size = 18, stroke = 1.6 }) => {
 };
 
 /* ---------- Small UI primitives ---------- */
-const Chip = ({ kind = "gray", children, dot = true }) => (
+export const Chip = ({ kind = "gray", children, dot = true }) => (
   <span className={`chip chip-${kind}`}>{dot && <span className="chip-dot"/>}{children}</span>
 );
 
-const StatusChip = ({ item }) => {
+export const StatusChip = ({ item }) => {
   if (item.error) return <Chip kind="bad"><Icon name="x" size={11}/> 오류 · {item.error}</Chip>;
   if (item.synced) return <Chip kind="ok"><Icon name="check" size={11}/> NEIS 반영됨</Chip>;
   if (item.running) return <Chip kind="info"><Icon name="clock" size={11}/> 반영 중…</Chip>;
   return <Chip kind="gray">미반영</Chip>;
 };
 
-const Checkbox = ({ checked, onChange, label }) => (
+export const Checkbox = ({ checked, onChange, label }: any) => (
   <label className="cbx">
     <span className={`cbx-box ${checked ? "on" : ""}`} onClick={() => onChange(!checked)}>
       {checked && <Icon name="check" size={12} stroke={2.4}/>}
@@ -57,7 +59,7 @@ const Checkbox = ({ checked, onChange, label }) => (
   </label>
 );
 
-const Ring = ({ pct = 0, size = 44 }) => {
+export const Ring = ({ pct = 0, size = 44 }) => {
   const r = size/2 - 3, c = 2*Math.PI*r;
   return (
     <svg width={size} height={size} className="ring">
@@ -69,11 +71,11 @@ const Ring = ({ pct = 0, size = 44 }) => {
   );
 };
 
-const Bar = ({ pct = 0, ok = false }) => (
+export const Bar = ({ pct = 0, ok = false }) => (
   <div className="bar"><div className="bar-fill" data-ok={ok ? "true" : "false"} style={{width: `${pct}%`}}/></div>
 );
 
-const Banner = ({ kind = "info", icon = "info", title, children }) => (
+export const Banner = ({ kind = "info", icon = "info", title, children }) => (
   <div className={`banner banner-${kind}`}>
     <span className="bn-icon"><Icon name={icon} size={16}/></span>
     <div>
@@ -83,7 +85,7 @@ const Banner = ({ kind = "info", icon = "info", title, children }) => (
   </div>
 );
 
-const EmptyState = ({ icon = "info", title, body }) => (
+export const EmptyState = ({ icon = "info", title, body }) => (
   <div className="empty">
     <div className="empty-icon"><Icon name={icon} size={24}/></div>
     <div className="empty-title">{title}</div>
@@ -91,11 +93,11 @@ const EmptyState = ({ icon = "info", title, body }) => (
   </div>
 );
 
-const Toggle = ({ on, onChange }) => (
+export const Toggle = ({ on, onChange }) => (
   <button className={`tgl ${on ? "on" : ""}`} onClick={() => onChange(!on)}><span className="tgl-knob"/></button>
 );
 
-const Segmented = ({ value, onChange, options }) => (
+export const Segmented = ({ value, onChange, options }) => (
   <div className="seg">
     {options.map(o => (
       <button key={o.value} className={o.value === value ? "on" : ""} onClick={() => onChange(o.value)}>{o.label}</button>
@@ -103,7 +105,7 @@ const Segmented = ({ value, onChange, options }) => (
   </div>
 );
 
-const PillTabs = ({ value, onChange, options }) => (
+export const PillTabs = ({ value, onChange, options }) => (
   <div className="pilltabs">
     {options.map(o => (
       <button key={o.value} className={o.value === value ? "on" : ""} onClick={() => onChange(o.value)}>{o.label}</button>

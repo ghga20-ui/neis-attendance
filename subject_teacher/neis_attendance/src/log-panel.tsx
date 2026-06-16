@@ -1,8 +1,10 @@
-/* global React, Icon */
+// @ts-nocheck -- verbatim JS->TSX port; incremental typing is a follow-up
+import React from "react";
+import { Icon } from "./components";
 const { useEffect, useRef } = React;
 
-const LogDock = ({ lines, collapsed, setCollapsed, clear }) => {
-  const bodyRef = useRef(null);
+export const LogDock = ({ lines, collapsed, setCollapsed, clear }) => {
+  const bodyRef = useRef<any>(null);
   useEffect(() => {
     if (bodyRef.current && !collapsed) {
       bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
@@ -33,4 +35,3 @@ const LogDock = ({ lines, collapsed, setCollapsed, clear }) => {
   );
 };
 
-window.LogDock = LogDock;
