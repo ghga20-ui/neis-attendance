@@ -82,7 +82,7 @@ export class ApiResultError extends Error {
   }
 }
 
-export const parseJsonResult = (raw: string): unknown => {
+export const parseJsonResult = (raw: string): any => {
   const data: unknown = JSON.parse(raw);
   if (isRecord(data) && data.error) {
     throw new ApiResultError(String(data.error), typeof data.code === "string" ? data.code : undefined);
