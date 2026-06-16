@@ -489,16 +489,13 @@ class Api:
             slots: list[TimetableSlot] = []
             seen: set[tuple[str, int]] = set()
 
-            def rows_for_offset(offset: int) -> tuple[int, list[dict[str, object]]]:
+            # Iterate the five weekdays sequentially. _cached_neis_mode_today_slots
+            # reads the shared Drive store (googleapiclient/httplib2), which is NOT
+            # thread-safe; fanning the days out concurrently corrupts that client.
+            # Speed still comes from the per-class NEIS parallelism inside each day.
+            for offset in range(5):
                 target_date = (week_start + timedelta(days=offset)).date().isoformat()
-                return offset, self._cached_neis_mode_today_slots(store, settings, target_date)
-
-            # Fetch all five weekdays concurrently, then assemble in day order.
-            with ThreadPoolExecutor(max_workers=5) as executor:
-                per_day = sorted(executor.map(rows_for_offset, range(5)), key=lambda item: item[0])
-
-            for offset, day_rows in per_day:
-                for row in day_rows:
+                for row in self._cached_neis_mode_today_slots(store, settings, target_date):
                     slot_id = str(row["id"])
                     day_of_week = offset + 1
                     dedupe_key = (slot_id, day_of_week)
