@@ -329,6 +329,9 @@ class Api:
         # A Drive read costs ~1.3s, and the same month is re-read on every date
         # change and five times per week publish; this collapses those.
         self._monthly_cache: dict[str, tuple[float, object]] = {}
+        # settings.json is read on every today-slots / publish call (~1.2s each);
+        # cache it too. Cleared alongside the other caches on any save.
+        self._settings_cache: tuple[float, object] | None = None
 
     def __getattribute__(self, name: str):
         attr = object.__getattribute__(self, name)
@@ -349,6 +352,8 @@ class Api:
         return self._store_cache
 
     def _clear_slot_cache(self, date_str: str | None = None) -> None:
+        # Any save invalidates the settings cache (settings/timetable/roster edits).
+        self._settings_cache = None
         if date_str is None:
             self._slot_cache.clear()
             self._monthly_cache.clear()
@@ -368,6 +373,14 @@ class Api:
         monthly = store.load_monthly(month)
         self._monthly_cache[month] = (now, monthly)
         return monthly
+
+    def _load_settings_cached(self, store):
+        now = time.monotonic()
+        if self._settings_cache and now - self._settings_cache[0] < SLOT_CACHE_TTL_SECONDS:
+            return self._settings_cache[1]
+        settings = store.load_settings()
+        self._settings_cache = (now, settings)
+        return settings
 
     def _cached_neis_mode_today_slots(self, store, settings, date_str: str) -> list[dict[str, object]]:
         assigned_signature = tuple(
@@ -498,7 +511,7 @@ class Api:
     def publish_neis_timetable_for_week(self, date_str: str) -> str:
         try:
             store = self._store()
-            settings = store.load_settings()
+            settings = self._load_settings_cached(store)
             if settings is None:
                 raise RuntimeError("settings.json 없음")
             if settings.timetable_mode != "neis":
@@ -613,11 +626,11 @@ class Api:
     def get_today_slots(self, date_str: str) -> str:
         try:
             store = self._store()
-            settings = store.load_settings()
+            settings = self._load_settings_cached(store)
             if settings is not None and settings.timetable_mode == "neis":
                 return json.dumps(self._cached_neis_mode_today_slots(store, settings, date_str), ensure_ascii=False)
             summaries = summarize_day(store, date_str)
-            monthly = store.load_monthly(date_str[:7])
+            monthly = self._load_monthly_cached(store, date_str[:7])
             day_records = monthly.records.get(date_str, {}) if monthly else {}
             result = []
             for s in summaries:
