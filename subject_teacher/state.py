@@ -61,9 +61,22 @@ class AppState:
     students: Students | None = None
 
 
+_students_migrated = False
+
+
 def build_store() -> DriveStore:
+    global _students_migrated
     credentials = get_credentials()
-    return DriveStore(DriveAppDataClient(credentials=credentials))
+    client = DriveAppDataClient(credentials=credentials)
+    if not _students_migrated:
+        try:
+            from subject_teacher.local_store import migrate_students_from_drive
+
+            migrate_students_from_drive(client)
+        except Exception:
+            pass  # never block startup on migration
+        _students_migrated = True
+    return DriveStore(client)
 
 
 def save_local_password(password: str) -> None:
