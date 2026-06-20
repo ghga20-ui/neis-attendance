@@ -582,18 +582,19 @@ class Api:
 
     def get_students_tsv(self) -> str:
         try:
-            store = self._store()
-            students = store.load_students()
-            return serialize_students_tsv(students)
+            from subject_teacher.local_store import load_local_students
+
+            return serialize_students_tsv(load_local_students())
         except Exception as exc:
             logger.exception("get_students_tsv failed")
             return _json_error(exc)
 
     def save_students_tsv(self, tsv: str) -> str:
         try:
-            store = self._store()
+            from subject_teacher.local_store import save_local_students
+
             students = parse_students_tsv(tsv)
-            store.save_students(students)
+            save_local_students(students)
             self._clear_slot_cache()
             return json.dumps({"ok": True})
         except Exception as exc:
@@ -674,16 +675,11 @@ class Api:
                 effectiveFrom=date_str,
                 slots=[],
             )
-            students = store.load_students() or Students(
-                schemaVersion=SCHEMA_VERSION,
-                classes={},
-            )
             monthly = store.load_monthly(month) or _empty_mobile_month(month)
             return json.dumps(
                 {
                     "settings": _dump_model_or_none(settings),
                     "timetable": timetable.model_dump(by_alias=True, mode="json"),
-                    "students": students.model_dump(by_alias=True, mode="json"),
                     "attendanceByDate": monthly.model_dump(by_alias=True, mode="json")["records"],
                     "queue": [],
                     "isOnline": True,
