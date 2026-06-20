@@ -47,7 +47,7 @@ export const TimetableSchema = z.object({
 
 export const StudentEntrySchema = z.object({
   number: z.number().int().min(1).max(99),
-  name: z.string().min(1),
+  name: z.string().default(""),
 });
 
 export const StudentsSchema = z.object({

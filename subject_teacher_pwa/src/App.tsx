@@ -481,11 +481,10 @@ export default function App({
                     data-mark={mark}
                     type="button"
                     aria-pressed={mark !== "present"}
-                    aria-label={`${student.number} ${student.name} ${markLabel(mark)}`}
+                    aria-label={`${student.number}번 ${markLabel(mark)}`}
                     onClick={() => toggleStudent(student.number)}
                   >
-                    <span>{student.number}</span>
-                    <strong>{student.name}</strong>
+                    <span>{student.number}번</span>
                     <em>{markLabel(mark)}</em>
                   </button>
                 );
