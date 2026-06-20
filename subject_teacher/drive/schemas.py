@@ -110,7 +110,7 @@ class Timetable(_Base):
 
 class StudentEntry(_Base):
     number: Annotated[int, Field(ge=1, le=99)]
-    name: str
+    name: str = ""
 
 
 class Students(_Base):
@@ -160,3 +160,14 @@ class MonthlyAttendance(_Base):
         if not _MONTH_RE.match(value):
             raise ValueError(f"month must be 'YYYY-MM', got {value!r}")
         return value
+
+
+def numbers_only(students: "Students") -> "Students":
+    """Return a copy of the roster with all names stripped (numbers only)."""
+    return Students(
+        schemaVersion=students.schema_version,
+        classes={
+            key: [StudentEntry(number=entry.number) for entry in entries]
+            for key, entries in students.classes.items()
+        },
+    )
