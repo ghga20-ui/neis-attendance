@@ -35,3 +35,7 @@ def get_client_secrets_path() -> Path:
     if project_path.exists():
         return project_path
     return get_app_data_dir() / "client_secrets.json"
+
+
+def get_students_path() -> Path:
+    return get_app_data_dir() / "students.local.json"
