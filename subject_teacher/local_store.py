@@ -8,7 +8,7 @@ from subject_teacher.auth.token_store import (
     save_token,
 )
 from subject_teacher.drive.migrations import migrate
-from subject_teacher.drive.schemas import Students
+from subject_teacher.drive.schemas import Students, numbers_only
 from subject_teacher.paths import get_students_path
 
 
@@ -29,15 +29,18 @@ def clear_local_students() -> None:
 
 
 def migrate_students_from_drive(client) -> bool:
-    """One-time: pull plaintext students.json off Drive into local storage, then delete it.
-
-    Idempotent: returns False when no cloud students.json exists. Never overwrites an
-    existing local roster (local is the source of truth once migrated).
+    """One-time: keep the full roster (with names) on-device and rewrite the cloud
+    copy as numbers-only. Idempotent: returns False when no cloud students.json exists.
+    Never overwrites an existing local roster (local is the source of truth for names).
     """
     raw = client.read_json("students.json")
     if raw is None:
         return False
+    students = Students.model_validate(migrate(raw))
     if load_local_students() is None:
-        save_local_students(Students.model_validate(migrate(raw)))
-    client.delete("students.json")
+        save_local_students(students)
+    client.upsert_json(
+        "students.json",
+        numbers_only(students).model_dump(by_alias=True, mode="json"),
+    )
     return True
