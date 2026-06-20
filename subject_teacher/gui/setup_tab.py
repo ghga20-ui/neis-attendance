@@ -471,6 +471,13 @@ class SetupTab(ctk.CTkFrame):
         self._secondary_button(footer, "선택 삭제", self.remove_selected_student_rows).grid(
             row=0, column=1, padx=4, sticky="ew"
         )
+        ctk.CTkLabel(
+            footer,
+            text="학생 이름은 이 PC에만 저장되며 외부로 전송되지 않습니다.  처리방침: docs/legal/privacy-policy.md",
+            font=("Noto Sans KR", 11),
+            text_color=self.colors["base00"],
+            justify="left",
+        ).grid(row=1, column=0, columnspan=2, padx=4, pady=(8, 0), sticky="w")
 
     def _build_table_header(self, parent, columns: list[tuple[str, int]]) -> ctk.CTkFrame:
         header = ctk.CTkFrame(parent, fg_color=self.colors["surface_alt"], corner_radius=14)
