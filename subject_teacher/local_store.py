@@ -26,3 +26,18 @@ def load_local_students() -> Students | None:
 
 def clear_local_students() -> None:
     delete_token(get_students_path())
+
+
+def migrate_students_from_drive(client) -> bool:
+    """One-time: pull plaintext students.json off Drive into local storage, then delete it.
+
+    Idempotent: returns False when no cloud students.json exists. Never overwrites an
+    existing local roster (local is the source of truth once migrated).
+    """
+    raw = client.read_json("students.json")
+    if raw is None:
+        return False
+    if load_local_students() is None:
+        save_local_students(Students.model_validate(migrate(raw)))
+    client.delete("students.json")
+    return True
