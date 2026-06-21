@@ -23,7 +23,7 @@ from subject_teacher.drive.schemas import (
     TimetableSlot,
 )
 from subject_teacher.drive.store import DriveStore
-from subject_teacher.paths import get_password_path
+from subject_teacher.paths import get_neis_api_key_path, get_password_path
 
 
 DAY_NAME_TO_NUMBER = {
@@ -41,8 +41,9 @@ class DaySlotSummary:
     slot_id: str
     period: int
     grade: int
-    class_no: int
+    class_no: str
     subject_name: str
+    neis_subject_label: str
     checked: bool
     absence_count: int
     synced_to_neis: bool
@@ -60,9 +61,22 @@ class AppState:
     students: Students | None = None
 
 
+_students_migrated = False
+
+
 def build_store() -> DriveStore:
+    global _students_migrated
     credentials = get_credentials()
-    return DriveStore(DriveAppDataClient(credentials=credentials))
+    client = DriveAppDataClient(credentials=credentials)
+    if not _students_migrated:
+        try:
+            from subject_teacher.local_store import migrate_students_from_drive
+
+            migrate_students_from_drive(client)
+        except Exception:
+            pass  # never block startup on migration
+        _students_migrated = True
+    return DriveStore(client)
 
 
 def save_local_password(password: str) -> None:
@@ -79,6 +93,18 @@ def load_local_password() -> str:
 
 def clear_local_password() -> None:
     delete_token(get_password_path())
+
+
+def save_local_neis_api_key(api_key: str) -> None:
+    save_token(get_neis_api_key_path(), {"api_key": api_key})
+
+
+def load_local_neis_api_key() -> str:
+    try:
+        payload = load_token(get_neis_api_key_path())
+    except TokenNotFoundError:
+        return ""
+    return str(payload.get("api_key", ""))
 
 
 def default_settings(region: str, year: int, term: int) -> Settings:
@@ -124,9 +150,11 @@ def parse_timetable_tsv(raw: str, effective_from: str) -> Timetable:
         if not stripped or stripped.startswith("slot_id\t"):
             continue
         parts = [part.strip() for part in stripped.split("\t")]
-        if len(parts) != 7:
+        if len(parts) not in (6, 7):
             raise ValueError(f"invalid timetable row: {line!r}")
-        slot_id, day_name, period, grade, class_no, subject_name, neis_label = parts
+        slot_id, day_name, period, grade, class_no, subject_name = parts[:6]
+        neis_label = parts[6] if len(parts) == 7 else subject_name
+        neis_label = neis_label or subject_name
         day_value = DAY_NAME_TO_NUMBER.get(day_name.lower())
         if day_value is None:
             raise ValueError(f"unknown day name: {day_name!r}")
@@ -136,7 +164,7 @@ def parse_timetable_tsv(raw: str, effective_from: str) -> Timetable:
                 dayOfWeek=day_value,
                 period=int(period),
                 grade=int(grade),
-                classNo=int(class_no),
+                classNo=class_no,
                 subjectName=subject_name,
                 neisSubjectLabel=neis_label,
             )
@@ -195,6 +223,7 @@ def summarize_day(store: DriveStore, date_str: str) -> list[DaySlotSummary]:
                 grade=slot.grade,
                 class_no=slot.class_no,
                 subject_name=slot.subject_name,
+                neis_subject_label=slot.neis_subject_label,
                 checked=attendance is not None,
                 absence_count=len(attendance.absences) if attendance else 0,
                 synced_to_neis=attendance.synced_to_neis if attendance else False,

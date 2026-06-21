@@ -164,11 +164,9 @@ def open_neis_direct(driver, password):
         # 가장 정확한 셀렉터들 (role="button" 활용)
         'div.btn-login[role="button"]',
         'div.btn-login-i[role="button"]',
-        'div.cl-button[role="button"]',
         # 내부 요소
         'div.btn-login a.cl-text-wrapper',
         '.btn-login-i a.cl-text-wrapper',
-        'a.cl-text-wrapper',
         # 텍스트 포함 요소
         'div.btn-login .cl-text',
         # 기존 호환성

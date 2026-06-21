@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from subject_teacher.drive.client import DriveAppDataClient
 from subject_teacher.drive.migrations import migrate
-from subject_teacher.drive.schemas import MonthlyAttendance, Settings, Students, Timetable
+from subject_teacher.drive.schemas import MonthlyAttendance, Settings, Students, StudentEntry, Timetable, numbers_only
 
 
 class DriveStore:
@@ -38,18 +38,6 @@ class DriveStore:
             timetable.model_dump(by_alias=True, mode="json"),
         )
 
-    def load_students(self) -> Students | None:
-        raw = self._client.read_json(self.STUDENTS)
-        if raw is None:
-            return None
-        return Students.model_validate(migrate(raw))
-
-    def save_students(self, students: Students) -> str:
-        return self._client.upsert_json(
-            self.STUDENTS,
-            students.model_dump(by_alias=True, mode="json"),
-        )
-
     @staticmethod
     def _monthly_filename(month: str) -> str:
         return f"attendance-{month}.json"
@@ -64,4 +52,17 @@ class DriveStore:
         return self._client.upsert_json(
             self._monthly_filename(monthly.month),
             monthly.model_dump(by_alias=True, mode="json"),
+        )
+
+    def load_students(self) -> Students | None:
+        raw = self._client.read_json(self.STUDENTS)
+        if raw is None:
+            return None
+        return Students.model_validate(migrate(raw))
+
+    def save_students(self, students: Students) -> str:
+        """Persist roster to Drive with names stripped — only numbers leave the device."""
+        return self._client.upsert_json(
+            self.STUDENTS,
+            numbers_only(students).model_dump(by_alias=True, mode="json"),
         )

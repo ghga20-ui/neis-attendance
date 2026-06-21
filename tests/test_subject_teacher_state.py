@@ -42,6 +42,42 @@ def test_timetable_tsv_roundtrip():
     assert "mon-3\tmon\t3\t2\t1\t문학\t2학년 1(문학)" in dumped
 
 
+def test_timetable_tsv_defaults_neis_label_to_subject_name():
+    raw = (
+        "slot_id\tday\tperiod\tgrade\tclass_no\tsubject_name\n"
+        "mon-3\tmon\t3\t2\t1\t문학\n"
+    )
+
+    timetable = parse_timetable_tsv(raw, effective_from="2026-03-02")
+
+    assert timetable.slots[0].subject_name == "문학"
+    assert timetable.slots[0].neis_subject_label == "문학"
+
+
+def test_timetable_tsv_accepts_nonnumeric_class_label():
+    raw = (
+        "slot_id\tday\tperiod\tgrade\tclass_no\tsubject_name\n"
+        "mon-3\tmon\t3\t2\t문학 A\t문학\n"
+    )
+
+    timetable = parse_timetable_tsv(raw, effective_from="2026-03-02")
+    dumped = serialize_timetable_tsv(timetable)
+
+    assert timetable.slots[0].class_no == "문학 A"
+    assert "mon-3\tmon\t3\t2\t문학 A\t문학\t문학" in dumped
+
+
+def test_timetable_tsv_blank_neis_label_defaults_to_subject_name():
+    raw = (
+        "slot_id\tday\tperiod\tgrade\tclass_no\tsubject_name\tneis_subject_label\n"
+        "mon-3\tmon\t3\t2\t1\t문학\t\n"
+    )
+
+    timetable = parse_timetable_tsv(raw, effective_from="2026-03-02")
+
+    assert timetable.slots[0].neis_subject_label == "문학"
+
+
 def test_students_tsv_roundtrip():
     raw = (
         "class_key\tnumber\tname\n"

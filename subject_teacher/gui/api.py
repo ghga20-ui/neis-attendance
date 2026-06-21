@@ -236,14 +236,15 @@ def _week_start(date_str: str) -> datetime:
 
 
 def _neis_mode_today_slots(
-    store,
     settings,
     date_str: str,
+    monthly,
     *,
     school_cache: dict | None = None,
     max_workers: int = 6,
 ) -> list[dict[str, object]]:
-    monthly = store.load_monthly(date_str[:7])
+    # `monthly` is supplied (and cached) by the caller; this function does no
+    # Drive I/O so it is safe to call from the per-class thread pool below.
     day_records = monthly.records.get(date_str, {}) if monthly else {}
     api_key = load_local_neis_api_key()
 
@@ -324,6 +325,13 @@ class Api:
         # Shared NEIS school-code cache so repeated/parallel timetable lookups
         # resolve schoolInfo at most once per (region, school, key).
         self._school_cache: dict[tuple[str, str, str], object] = {}
+        # Short-lived cache of the monthly attendance file, keyed by "YYYY-MM".
+        # A Drive read costs ~1.3s, and the same month is re-read on every date
+        # change and five times per week publish; this collapses those.
+        self._monthly_cache: dict[str, tuple[float, object]] = {}
+        # settings.json is read on every today-slots / publish call (~1.2s each);
+        # cache it too. Cleared alongside the other caches on any save.
+        self._settings_cache: tuple[float, object] | None = None
 
     def __getattribute__(self, name: str):
         attr = object.__getattribute__(self, name)
@@ -344,12 +352,35 @@ class Api:
         return self._store_cache
 
     def _clear_slot_cache(self, date_str: str | None = None) -> None:
+        # Any save invalidates the settings cache (settings/timetable/roster edits).
+        self._settings_cache = None
         if date_str is None:
             self._slot_cache.clear()
+            self._monthly_cache.clear()
             return
         for key in list(self._slot_cache):
             if key[0] == date_str:
                 self._slot_cache.pop(key, None)
+        # Saving attendance changes the month file — drop its cached copy so the
+        # next read reflects the write.
+        self._monthly_cache.pop(date_str[:7], None)
+
+    def _load_monthly_cached(self, store, month: str):
+        now = time.monotonic()
+        cached = self._monthly_cache.get(month)
+        if cached and now - cached[0] < SLOT_CACHE_TTL_SECONDS:
+            return cached[1]
+        monthly = store.load_monthly(month)
+        self._monthly_cache[month] = (now, monthly)
+        return monthly
+
+    def _load_settings_cached(self, store):
+        now = time.monotonic()
+        if self._settings_cache and now - self._settings_cache[0] < SLOT_CACHE_TTL_SECONDS:
+            return self._settings_cache[1]
+        settings = store.load_settings()
+        self._settings_cache = (now, settings)
+        return settings
 
     def _cached_neis_mode_today_slots(self, store, settings, date_str: str) -> list[dict[str, object]]:
         assigned_signature = tuple(
@@ -367,7 +398,8 @@ class Api:
         cached = self._slot_cache.get(cache_key)
         if cached and now - cached[0] < SLOT_CACHE_TTL_SECONDS:
             return [dict(item) for item in cached[1]]
-        rows = _neis_mode_today_slots(store, settings, date_str, school_cache=self._school_cache)
+        monthly = self._load_monthly_cached(store, date_str[:7])
+        rows = _neis_mode_today_slots(settings, date_str, monthly, school_cache=self._school_cache)
         self._slot_cache[cache_key] = (now, [dict(item) for item in rows])
         return rows
 
@@ -479,7 +511,7 @@ class Api:
     def publish_neis_timetable_for_week(self, date_str: str) -> str:
         try:
             store = self._store()
-            settings = store.load_settings()
+            settings = self._load_settings_cached(store)
             if settings is None:
                 raise RuntimeError("settings.json 없음")
             if settings.timetable_mode != "neis":
@@ -550,18 +582,20 @@ class Api:
 
     def get_students_tsv(self) -> str:
         try:
-            store = self._store()
-            students = store.load_students()
-            return serialize_students_tsv(students)
+            from subject_teacher.local_store import load_local_students
+
+            return serialize_students_tsv(load_local_students())
         except Exception as exc:
             logger.exception("get_students_tsv failed")
             return _json_error(exc)
 
     def save_students_tsv(self, tsv: str) -> str:
         try:
-            store = self._store()
+            from subject_teacher.local_store import save_local_students
+
             students = parse_students_tsv(tsv)
-            store.save_students(students)
+            save_local_students(students)          # full names → local (DPAPI)
+            self._store().save_students(students)  # numbers only → Drive (store strips names)
             self._clear_slot_cache()
             return json.dumps({"ok": True})
         except Exception as exc:
@@ -594,11 +628,11 @@ class Api:
     def get_today_slots(self, date_str: str) -> str:
         try:
             store = self._store()
-            settings = store.load_settings()
+            settings = self._load_settings_cached(store)
             if settings is not None and settings.timetable_mode == "neis":
                 return json.dumps(self._cached_neis_mode_today_slots(store, settings, date_str), ensure_ascii=False)
             summaries = summarize_day(store, date_str)
-            monthly = store.load_monthly(date_str[:7])
+            monthly = self._load_monthly_cached(store, date_str[:7])
             day_records = monthly.records.get(date_str, {}) if monthly else {}
             result = []
             for s in summaries:
@@ -642,16 +676,16 @@ class Api:
                 effectiveFrom=date_str,
                 slots=[],
             )
+            monthly = store.load_monthly(month) or _empty_mobile_month(month)
             students = store.load_students() or Students(
                 schemaVersion=SCHEMA_VERSION,
                 classes={},
             )
-            monthly = store.load_monthly(month) or _empty_mobile_month(month)
             return json.dumps(
                 {
                     "settings": _dump_model_or_none(settings),
-                    "timetable": timetable.model_dump(by_alias=True, mode="json"),
                     "students": students.model_dump(by_alias=True, mode="json"),
+                    "timetable": timetable.model_dump(by_alias=True, mode="json"),
                     "attendanceByDate": monthly.model_dump(by_alias=True, mode="json")["records"],
                     "queue": [],
                     "isOnline": True,

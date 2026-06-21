@@ -217,17 +217,15 @@ class Api:
 
     def get_students_tsv(self) -> str:
         try:
-            store = build_store()
-            students = store.load_students()
+            students = load_local_students()
             return serialize_students_tsv(students)
         except Exception as exc:
             return f"ERROR: {exc}"
 
     def save_students_tsv(self, tsv: str) -> str:
         try:
-            store = build_store()
             students = parse_students_tsv(tsv)
-            store.save_students(students)
+            save_local_students(students)
             return json.dumps({"ok": True})
         except Exception as exc:
             return json.dumps({"error": str(exc)})

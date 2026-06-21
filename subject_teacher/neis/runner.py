@@ -60,23 +60,26 @@ def process_day(
             continue
 
         try:
-            cmd.select_period(driver, slot.period)
+            cmd.select_period(driver, slot.period, slot.neis_subject_label, slot.grade, slot.class_no)
             cmd.click_reset(driver)
 
             absent = [item for item in attendance.absences if item.mark_type.value == "absent"]
             excused = [item for item in attendance.absences if item.mark_type.value == "excused"]
+            expected_result_count = len(absent) + len(excused)
 
             cmd.ensure_excused_mode(driver, False)
             for item in absent:
-                cmd.click_attendance_cell(driver, item.student_number)
+                cmd.click_attendance_cell(driver, item.student_number, expected_mark="absent")
 
             if excused:
                 cmd.ensure_excused_mode(driver, True)
                 for item in excused:
-                    cmd.click_attendance_cell(driver, item.student_number)
+                    cmd.click_attendance_cell(driver, item.student_number, expected_mark="excused")
                 cmd.ensure_excused_mode(driver, False)
 
+            cmd.verify_result_count(driver, expected_result_count)
             cmd.click_save(driver)
+            cmd.verify_result_count(driver, expected_result_count)
             if close_after:
                 cmd.click_close(driver)
 

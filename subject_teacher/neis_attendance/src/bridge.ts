@@ -20,15 +20,29 @@ export interface DesktopApi {
   start_run(dateStr: string, password: string, closeAfter: boolean): Promise<string>;
 }
 
+/** A log line pushed from Python via evaluate_js("window.__pushLog(...)"). */
+export interface BridgeLogEntry {
+  lv: string;
+  msg: string;
+}
+
+/** A progress update pushed from Python during a NEIS run. */
+export interface BridgeProgress {
+  done: number;
+  total: number;
+  current: string;
+  state: string;
+}
+
 declare global {
   interface Window {
     pywebview?: { api: DesktopApi };
-    __logCallbacks: Array<(entry: unknown) => void>;
-    __progressCallbacks: Array<(progress: unknown) => void>;
+    __logCallbacks: Array<(entry: BridgeLogEntry) => void>;
+    __progressCallbacks: Array<(progress: BridgeProgress) => void>;
     __pywebviewReadyCallbacks: Array<() => void>;
-    __pushLog: (entry: unknown) => void;
-    __pushProgress: (progress: unknown) => void;
-    __registerBridge: (onLog: (entry: unknown) => void, onProgress: (progress: unknown) => void) => void;
+    __pushLog: (entry: BridgeLogEntry) => void;
+    __pushProgress: (progress: BridgeProgress) => void;
+    __registerBridge: (onLog: (entry: BridgeLogEntry) => void, onProgress: (progress: BridgeProgress) => void) => void;
     __isPywebview: () => boolean;
     __onPywebviewReady: (callback: () => void) => void;
   }

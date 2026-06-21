@@ -1,12 +1,102 @@
+from subject_teacher.neis import subject_commands
 from subject_teacher.neis.subject_commands import (
     MENU_PATH,
     SIDE_MENU_LABEL,
     SEL,
+    build_date_input_xpath,
+    build_period_row_xpath,
     build_side_menu_xpath,
     build_student_row_xpath,
     combo_already_selected,
+    date_option_matches,
+    date_option_prefix,
+    format_neis_date_label,
     normalize_neis_date,
+    parse_neis_date_label,
 )
+
+
+class _FakeButton:
+    def __init__(self, kind="save"):
+        self.kind = kind
+
+
+class _FakeWait:
+    def __init__(self, element):
+        self.element = element
+
+    def until(self, _condition):
+        return self.element
+
+
+class _FakeAlert:
+    def __init__(self, text="해당자료를 저장하시겠습니까?"):
+        self.text = text
+        self.accepted = False
+
+    def accept(self):
+        self.accepted = True
+
+
+class _FakeSwitch:
+    def __init__(self, alert=None):
+        self._alert = alert
+
+    @property
+    def alert(self):
+        if self._alert is None:
+            raise RuntimeError("no alert")
+        return self._alert
+
+
+class _FakeDriver:
+    def __init__(
+        self,
+        alert=None,
+        modal_confirm=False,
+        no_change_notice=False,
+        saved_notice=False,
+        close_confirm=False,
+    ):
+        self.button = _FakeButton()
+        self.switch_to = _FakeSwitch(alert)
+        self.modal_confirm = modal_confirm
+        self.no_change_notice = no_change_notice
+        self.saved_notice = saved_notice
+        self.close_confirm = close_confirm
+        self.scripts = []
+        self.clicked_modal_confirm = False
+        self.clicked_notice_ok = False
+        self.clicked_close_confirm = False
+
+    def execute_script(self, script, *args):
+        self.scripts.append((script, args))
+        message_texts = args[0] if args and isinstance(args[0], list) else []
+        if "해당자료를 저장하시겠습니까?" in message_texts:
+            self.clicked_modal_confirm = bool(self.modal_confirm)
+            return {"button": _FakeButton("confirm"), "messageText": "해당자료를 저장하시겠습니까?"} if self.modal_confirm else None
+        if "출결마감" in message_texts:
+            self.clicked_close_confirm = bool(self.close_confirm)
+            return {"button": _FakeButton("close-confirm"), "messageText": "출결마감"} if self.close_confirm else None
+        if "변경된 내용이 없습니다." in message_texts:
+            if self.no_change_notice:
+                self.clicked_notice_ok = True
+                return {"button": _FakeButton("notice"), "messageText": "변경된 내용이 없습니다."}
+        if "저장했습니다." in message_texts:
+            if self.saved_notice:
+                self.clicked_notice_ok = True
+                return {"button": _FakeButton("notice"), "messageText": "저장했습니다."}
+        if "loadingCount" in script and "dialogs" in script:
+            return {"dialogs": [], "messages": [], "buttons": []}
+        if "querySelectorAll" in script:
+            return False
+        return None
+
+
+def _patch_click_save_wait(monkeypatch, driver):
+    monkeypatch.setattr(subject_commands, "_wait", lambda *_args, **_kwargs: _FakeWait(driver.button))
+    monkeypatch.setattr(subject_commands, "_click_element_like_user", lambda _driver, _button: None)
+    monkeypatch.setattr(subject_commands, "_wait_for_save_completion", lambda _driver: None)
 
 
 def test_menu_path_matches_manual():
@@ -37,6 +127,53 @@ def test_normalize_neis_date_converts_dash_format():
     assert normalize_neis_date("2026.04.17") == "2026.04.17"
 
 
+def test_format_neis_date_label_matches_neis_combobox_value():
+    assert format_neis_date_label("2026-04-21") == "2026.04.21.(화)"
+    assert format_neis_date_label("2026.04.21") == "2026.04.21.(화)"
+    assert format_neis_date_label("2026.04.21.(화)") == "2026.04.21.(화)"
+
+
+def test_parse_neis_date_label_ignores_weekday_suffix():
+    assert parse_neis_date_label("2026.04.28.(화)").isoformat() == "2026-04-28"
+    assert parse_neis_date_label("2026.04.28").isoformat() == "2026-04-28"
+
+
+def test_date_option_prefix_ignores_weekday_suffix():
+    assert date_option_prefix("2026-04-21") == "2026.04.21"
+    assert date_option_prefix("2026.04.21.(화)") == "2026.04.21"
+
+
+def test_date_option_matches_common_neis_dropdown_text():
+    assert date_option_matches("2026.04.21.(화)", "2026-04-21") is True
+    assert date_option_matches("2026.04.21 화", "2026-04-21") is True
+    assert date_option_matches("2026.04.22.(수)", "2026-04-21") is False
+
+
+def test_date_input_xpath_accepts_dynamic_neis_labels():
+    xpath = build_date_input_xpath()
+
+    assert "contains(@aria-label, '일자')" in xpath
+    assert "contains(@class, 'cl-dateinput')" in xpath
+    assert "@type='date'" in xpath
+
+
+def test_period_row_xpath_accepts_common_neis_period_labels():
+    xpath = build_period_row_xpath(3)
+
+    assert "3교시" in xpath
+    assert "3 교시" in xpath
+    assert "교시 3" in xpath
+    assert "@role='row'" in xpath
+
+
+def test_period_row_xpath_can_include_subject_label():
+    xpath = build_period_row_xpath(2, "1학년 8(공통국어1)")
+
+    assert "2교시" in xpath
+    assert "1학년 8" in xpath
+    assert "공통국어1" in xpath
+
+
 def test_combo_already_selected_detects_exact_label():
     aria_labels = [
         "학년도, :::학년도:::",
@@ -47,3 +184,145 @@ def test_combo_already_selected_detects_exact_label():
     assert combo_already_selected(aria_labels, "학년도", "2026") is True
     assert combo_already_selected(aria_labels, "학기", "1학기") is True
     assert combo_already_selected(aria_labels, "학기", "2학기") is False
+
+
+def test_click_save_accepts_browser_confirm_alert(monkeypatch):
+    alert = _FakeAlert()
+    driver = _FakeDriver(alert=alert)
+    _patch_click_save_wait(monkeypatch, driver)
+
+    subject_commands.click_save(driver)
+
+    assert alert.accepted is True
+
+
+def test_click_save_accepts_neis_internal_confirm_modal(monkeypatch):
+    driver = _FakeDriver(modal_confirm=True)
+    _patch_click_save_wait(monkeypatch, driver)
+
+    subject_commands.click_save(driver)
+
+    assert driver.clicked_modal_confirm is True
+
+
+def test_click_save_uses_short_fallback_when_no_confirm_dialog(monkeypatch):
+    driver = _FakeDriver(modal_confirm=False)
+    sleeps = []
+    _patch_click_save_wait(monkeypatch, driver)
+    monkeypatch.setattr(subject_commands.time, "sleep", lambda seconds: sleeps.append(seconds))
+
+    subject_commands.click_save(driver)
+
+    assert sleeps
+
+
+def test_click_save_closes_no_change_notice_modal(monkeypatch):
+    driver = _FakeDriver(no_change_notice=True)
+    _patch_click_save_wait(monkeypatch, driver)
+
+    subject_commands.click_save(driver)
+
+    assert driver.clicked_notice_ok is True
+
+
+def test_click_save_returns_no_change_when_neis_reports_no_change(monkeypatch):
+    driver = _FakeDriver(no_change_notice=True)
+    _patch_click_save_wait(monkeypatch, driver)
+
+    result = subject_commands.click_save(driver)
+
+    assert result == "no_change"
+
+
+def test_click_save_closes_saved_notice_modal(monkeypatch):
+    driver = _FakeDriver(saved_notice=True)
+    _patch_click_save_wait(monkeypatch, driver)
+
+    result = subject_commands.click_save(driver)
+
+    assert driver.clicked_notice_ok is True
+    assert result == "saved"
+
+
+def test_click_close_accepts_neis_internal_confirm_modal(monkeypatch):
+    driver = _FakeDriver(close_confirm=True)
+
+    monkeypatch.setattr(subject_commands, "_wait", lambda *_args, **_kwargs: _FakeWait(driver.button))
+    monkeypatch.setattr(subject_commands, "_click_element_like_user", lambda _driver, _button: None)
+    monkeypatch.setattr(subject_commands.time, "sleep", lambda _seconds: None)
+
+    subject_commands.click_close(driver)
+
+    assert driver.clicked_close_confirm is True
+
+
+def test_close_confirm_texts_cover_neis_spaced_close_prompt():
+    assert "마감 하시겠습니까?" in subject_commands.CLOSE_CONFIRM_TEXTS
+
+
+def test_click_period_row_uses_coordinate_grid_click(monkeypatch):
+    cell = object()
+    clicked = []
+
+    class Driver:
+        def execute_script(self, *_args):
+            return cell
+
+    monkeypatch.setattr(subject_commands, "_click_grid_cell", lambda _driver, target: clicked.append(target))
+
+    result = subject_commands._click_period_row_by_text(Driver(), 5, "문학", 2, "1")
+
+    assert result is True
+    assert clicked == [cell]
+
+
+def test_select_period_waits_for_student_grid_after_period_click(monkeypatch):
+    calls = []
+    driver = object()
+
+    monkeypatch.setattr(subject_commands, "_click_period_row_by_text", lambda *_args: True)
+    monkeypatch.setattr(
+        subject_commands,
+        "_wait_for_student_grid_ready",
+        lambda target, period, subject_label, grade, class_no: calls.append(
+            (target, period, subject_label, grade, class_no)
+        ),
+        raising=False,
+    )
+    monkeypatch.setattr(subject_commands.time, "sleep", lambda _seconds: None)
+
+    subject_commands.select_period(driver, 5, "문학", 2, "1")
+
+    assert calls == [(driver, 5, "문학", 2, "1")]
+
+
+def test_click_attendance_cell_skips_absent_cell_that_already_has_slash(monkeypatch):
+    cell = object()
+    driver = object()
+    clicked = []
+
+    monkeypatch.setattr(subject_commands, "_wait", lambda *_args, **_kwargs: _FakeWait(cell))
+    monkeypatch.setattr(subject_commands, "_status_cell_has_absent_mark", lambda _driver, _cell: True)
+    monkeypatch.setattr(subject_commands, "_click_grid_cell", lambda _driver, _cell: clicked.append(_cell))
+
+    subject_commands.click_attendance_cell(driver, 3, expected_mark="absent")
+
+    assert clicked == []
+
+
+def test_click_attendance_cell_clicks_empty_absent_cell_once(monkeypatch):
+    cell = object()
+    driver = object()
+    clicked = []
+    verified = []
+
+    monkeypatch.setattr(subject_commands, "_wait", lambda *_args, **_kwargs: _FakeWait(cell))
+    monkeypatch.setattr(subject_commands, "_status_cell_has_absent_mark", lambda _driver, _cell: False)
+    monkeypatch.setattr(subject_commands, "_click_grid_cell", lambda _driver, _cell: clicked.append(_cell))
+    monkeypatch.setattr(subject_commands, "_wait_for_absent_mark", lambda _driver, number: verified.append(number))
+    monkeypatch.setattr(subject_commands.time, "sleep", lambda _seconds: None)
+
+    subject_commands.click_attendance_cell(driver, 3, expected_mark="absent")
+
+    assert clicked == [cell]
+    assert verified == [3]

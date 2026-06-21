@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from google.auth.exceptions import RefreshError
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -11,6 +12,22 @@ from subject_teacher.auth.token_store import TokenNotFoundError, delete_token, l
 from subject_teacher.paths import get_client_secrets_path, get_token_path
 
 SCOPES = ["https://www.googleapis.com/auth/drive.appdata"]
+REAUTH_MESSAGE = "Google Drive 인증이 만료됐습니다. OAuth 인증 화면에서 계정을 다시 확인해 주세요."
+
+
+class ReauthenticationRequiredError(RuntimeError):
+    """Raised when the stored Google refresh token can no longer be used."""
+
+    code = "reauth_required"
+
+
+def is_reauthentication_error(exc: Exception) -> bool:
+    text = str(exc).lower()
+    return (
+        isinstance(exc, ReauthenticationRequiredError)
+        or "invalid_grant" in text
+        or "expired or revoked" in text
+    )
 
 
 def _credentials_to_payload(credentials: Credentials) -> dict[str, Any]:
@@ -60,7 +77,11 @@ def load_credentials() -> Credentials | None:
 def get_credentials() -> Credentials:
     credentials = load_credentials()
     if credentials and credentials.expired and credentials.refresh_token:
-        credentials.refresh(Request())
+        try:
+            credentials.refresh(Request())
+        except RefreshError as exc:
+            delete_token(get_token_path())
+            raise ReauthenticationRequiredError(REAUTH_MESSAGE) from exc
         save_token(get_token_path(), _credentials_to_payload(credentials))
         return credentials
     if credentials and credentials.valid:

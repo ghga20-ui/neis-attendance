@@ -12,8 +12,27 @@ import regions
 
 SCHEMA_VERSION = 1
 
-_CLASS_KEY_RE = re.compile(r"^\d+-\d+$")
+_CLASS_KEY_RE = re.compile(r"^\d+-[^\t\r\n]+$")
 _MONTH_RE = re.compile(r"^\d{4}-(0[1-9]|1[0-2])$")
+
+
+def _normalize_class_no(value: object) -> str:
+    if value is None:
+        raise ValueError("classNo must not be blank")
+    text = str(value).strip()
+    if not text:
+        raise ValueError("classNo must not be blank")
+    if any(char in text for char in "\t\r\n"):
+        raise ValueError("classNo must not contain tab or newline characters")
+    return text
+
+
+def _normalize_grade(value: object) -> int:
+    if isinstance(value, str):
+        match = re.search(r"\d+", value)
+        if match:
+            return int(match.group(0))
+    return value
 
 
 class _Base(BaseModel):
@@ -31,6 +50,24 @@ class Semester(_Base):
     term: Literal[1, 2]
 
 
+class AssignedLesson(_Base):
+    grade: Annotated[int, Field(ge=1, le=3)]
+    class_no: Annotated[str, Field(min_length=1, max_length=40)]
+    subject_name: str
+    neis_subject_label: str = ""
+    subject_aliases: list[str] = Field(default_factory=list)
+
+    @field_validator("grade", mode="before")
+    @classmethod
+    def validate_grade(cls, value: object) -> int:
+        return _normalize_grade(value)
+
+    @field_validator("class_no", mode="before")
+    @classmethod
+    def validate_class_no(cls, value: object) -> str:
+        return _normalize_class_no(value)
+
+
 class Settings(_Base):
     schema_version: int = Field(default=SCHEMA_VERSION)
     teacher_name: str
@@ -38,6 +75,8 @@ class Settings(_Base):
     region: str
     semester: Semester
     close_by_default: bool = False
+    timetable_mode: Literal["manual", "neis"] = "neis"
+    assigned_lessons: list[AssignedLesson] = Field(default_factory=list)
     updated_at: str
 
     @field_validator("region")
@@ -53,9 +92,14 @@ class TimetableSlot(_Base):
     day_of_week: Annotated[int, Field(ge=1, le=5)]
     period: Annotated[int, Field(ge=1, le=7)]
     grade: Annotated[int, Field(ge=1, le=3)]
-    class_no: Annotated[int, Field(ge=1, le=20)]
+    class_no: Annotated[str, Field(min_length=1, max_length=40)]
     subject_name: str
     neis_subject_label: str
+
+    @field_validator("class_no", mode="before")
+    @classmethod
+    def validate_class_no(cls, value: object) -> str:
+        return _normalize_class_no(value)
 
 
 class Timetable(_Base):
@@ -66,7 +110,7 @@ class Timetable(_Base):
 
 class StudentEntry(_Base):
     number: Annotated[int, Field(ge=1, le=99)]
-    name: str
+    name: str = ""
 
 
 class Students(_Base):
@@ -77,7 +121,7 @@ class Students(_Base):
     @classmethod
     def validate_classes(cls, value: dict[str, list[StudentEntry]]) -> dict[str, list[StudentEntry]]:
         for key in value:
-            if not _CLASS_KEY_RE.match(key):
+            if not _CLASS_KEY_RE.match(key) or not key.split("-", 1)[1].strip():
                 raise ValueError(f"class key must match 'grade-classNo', got {key!r}")
         return value
 
@@ -116,3 +160,14 @@ class MonthlyAttendance(_Base):
         if not _MONTH_RE.match(value):
             raise ValueError(f"month must be 'YYYY-MM', got {value!r}")
         return value
+
+
+def numbers_only(students: "Students") -> "Students":
+    """Return a copy of the roster with all names stripped (numbers only)."""
+    return Students(
+        schemaVersion=students.schema_version,
+        classes={
+            key: [StudentEntry(number=entry.number) for entry in entries]
+            for key, entries in students.classes.items()
+        },
+    )

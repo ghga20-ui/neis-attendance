@@ -1,4 +1,3 @@
-// @ts-nocheck -- verbatim JS->TSX port; incremental typing is a follow-up
 import React from "react";
 import { Icon } from "./components";
 const { useEffect, useRef } = React;

@@ -5,6 +5,8 @@ from subject_teacher.drive.schemas import (
     MarkType,
     MonthlyAttendance,
     SlotAttendance,
+    Students,
+    StudentEntry,
 )
 from subject_teacher.drive.store import DriveStore
 
@@ -86,3 +88,36 @@ def test_save_monthly_roundtrip():
     name, payload = client.upsert_json.call_args.args
     assert name == "attendance-2026-04.json"
     assert payload["month"] == "2026-04"
+
+
+class _MemClient:
+    def __init__(self):
+        self.files = {}
+
+    def read_json(self, name):
+        return self.files.get(name)
+
+    def upsert_json(self, name, data):
+        self.files[name] = data
+        return "id-" + name
+
+
+def test_save_students_strips_names_before_writing_to_drive():
+    client = _MemClient()
+    store = DriveStore(client)
+    store.save_students(
+        Students(schemaVersion=1, classes={"2-3": [StudentEntry(number=5, name="김가나")]})
+    )
+    written = client.files["students.json"]
+    # only numbers reach Drive — name must be empty in the stored payload
+    assert written["classes"]["2-3"][0]["number"] == 5
+    assert written["classes"]["2-3"][0]["name"] == ""
+
+
+def test_load_students_round_trips_numbers():
+    client = _MemClient()
+    store = DriveStore(client)
+    store.save_students(Students(schemaVersion=1, classes={"2-3": [StudentEntry(number=5, name="X")]}))
+    loaded = store.load_students()
+    assert loaded.classes["2-3"][0].number == 5
+    assert loaded.classes["2-3"][0].name == ""

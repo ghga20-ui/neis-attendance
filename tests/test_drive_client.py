@@ -1,4 +1,5 @@
 from unittest.mock import MagicMock
+import ssl
 
 from subject_teacher.drive.client import DriveAppDataClient
 
@@ -26,6 +27,34 @@ def test_find_file_id_returns_id_when_present():
     client = DriveAppDataClient(service=service)
 
     assert client.find_file_id("settings.json") == "abc123"
+
+
+def test_find_file_id_retries_transient_ssl_wrong_version():
+    execute = MagicMock(side_effect=[
+        ssl.SSLError("[SSL: WRONG_VERSION_NUMBER] wrong version number"),
+        {"files": [{"id": "abc123", "name": "settings.json"}]},
+    ])
+    service = MagicMock()
+    service.files.return_value.list.return_value.execute = execute
+
+    client = DriveAppDataClient(service=service)
+
+    assert client.find_file_id("settings.json") == "abc123"
+    assert execute.call_count == 2
+
+
+def test_find_file_id_retries_transient_ssl_bad_record_mac():
+    execute = MagicMock(side_effect=[
+        ssl.SSLError("[SSL: DECRYPTION_FAILED_OR_BAD_RECORD_MAC] decryption failed or bad record mac"),
+        {"files": [{"id": "abc123", "name": "settings.json"}]},
+    ])
+    service = MagicMock()
+    service.files.return_value.list.return_value.execute = execute
+
+    client = DriveAppDataClient(service=service)
+
+    assert client.find_file_id("settings.json") == "abc123"
+    assert execute.call_count == 2
 
 
 def test_upsert_json_creates_when_absent():

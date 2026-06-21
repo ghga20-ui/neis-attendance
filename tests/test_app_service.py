@@ -1,4 +1,7 @@
-from subject_teacher.app_service import build_day_input
+from unittest.mock import MagicMock
+
+import subject_teacher.app_service as app_service
+from subject_teacher.app_service import build_day_input, run_day
 from subject_teacher.drive.schemas import MonthlyAttendance, Semester, Settings, SlotAttendance, Timetable, TimetableSlot
 
 
@@ -63,3 +66,16 @@ def test_build_day_input_filters_slots_by_weekday_and_records():
     assert day_input.date == "2026-04-20"
     assert len(day_input.slots) == 1
     assert day_input.slots[0][0].id == "mon-3"
+
+
+def test_run_day_keeps_browser_open_when_requested(monkeypatch):
+    driver = MagicMock()
+    monkeypatch.setattr("subject_teacher.app_service.prepare_run_context", MagicMock())
+    monkeypatch.setattr("subject_teacher.app_service.create_driver", MagicMock(return_value=driver))
+    monkeypatch.setattr("subject_teacher.app_service.utils.open_neis_direct", MagicMock())
+    monkeypatch.setattr("subject_teacher.app_service.process_day", MagicMock(return_value=[]))
+
+    run_day("2026-04-20", "pw", False, keep_browser_open=True)
+
+    app_service.create_driver.assert_called_once_with(keep_browser_open=True)
+    driver.quit.assert_not_called()

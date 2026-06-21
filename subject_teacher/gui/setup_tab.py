@@ -7,6 +7,7 @@ from CTkMessagebox import CTkMessagebox
 
 from regions import DEFAULT_REGION, REGION_LIST
 from subject_teacher.drive.schemas import SCHEMA_VERSION, StudentEntry, Students, Timetable, TimetableSlot
+from subject_teacher.local_store import load_local_students, save_local_students
 from subject_teacher.state import build_store, default_settings
 
 
@@ -470,6 +471,13 @@ class SetupTab(ctk.CTkFrame):
         self._secondary_button(footer, "선택 삭제", self.remove_selected_student_rows).grid(
             row=0, column=1, padx=4, sticky="ew"
         )
+        ctk.CTkLabel(
+            footer,
+            text="학생 이름은 이 PC에만 저장되며 외부로 전송되지 않습니다.  처리방침: docs/legal/privacy-policy.md",
+            font=("Noto Sans KR", 11),
+            text_color=self.colors["base00"],
+            justify="left",
+        ).grid(row=1, column=0, columnspan=2, padx=4, pady=(8, 0), sticky="w")
 
     def _build_table_header(self, parent, columns: list[tuple[str, int]]) -> ctk.CTkFrame:
         header = ctk.CTkFrame(parent, fg_color=self.colors["surface_alt"], corner_radius=14)
@@ -746,7 +754,9 @@ class SetupTab(ctk.CTkFrame):
             day_label = row["day"].get().strip()
             period = int(row["period"].get().strip())
             grade = int(row["grade"].get().strip())
-            class_no = int(row["class_no"].get().strip())
+            class_no = row["class_no"].get().strip()
+            if not class_no:
+                continue
             slots.append(
                 TimetableSlot(
                     id=f"{day_label}-{period}",
@@ -913,7 +923,7 @@ class SetupTab(ctk.CTkFrame):
             store = self._with_store()
             settings = store.load_settings() or default_settings(self.region_var.get(), int(self.year_var.get()), int(self.term_var.get()))
             timetable = store.load_timetable()
-            students = store.load_students()
+            students = load_local_students()
 
             self.region_var.set(settings.region)
             self.year_var.set(str(settings.semester.year))
@@ -978,9 +988,9 @@ class SetupTab(ctk.CTkFrame):
     def save_students_to_drive(self) -> None:
         try:
             students = self._collect_students()
-            store = self._with_store()
-            store.save_students(students)
-            self.app.write_log("students.json 저장 완료")
+            save_local_students(students)             # 이름까지 로컬
+            self._with_store().save_students(students) # 번호만 Drive
+            self.app.write_log("학생 명부 저장 완료 (이름은 로컬, 번호만 동기화)")
         except Exception as exc:
             CTkMessagebox(title="학생 명부 저장 실패", message=str(exc), icon="cancel")
 

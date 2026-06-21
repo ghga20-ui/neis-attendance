@@ -1,4 +1,3 @@
-// @ts-nocheck -- verbatim JS->TSX port; incremental typing is a follow-up
 import React from "react";
 const { useState } = React;
 
@@ -113,4 +112,3 @@ export const PillTabs = ({ value, onChange, options }) => (
   </div>
 );
 
-Object.assign(window, { Icon, Chip, StatusChip, Checkbox, Ring, Bar, Banner, EmptyState, Toggle, Segmented, PillTabs });

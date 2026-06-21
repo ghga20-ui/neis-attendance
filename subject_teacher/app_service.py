@@ -25,13 +25,15 @@ class RunContext:
     region_key: str
 
 
-def create_driver():
+def create_driver(keep_browser_open: bool = False):
     options = Options()
     profile_dir = os.path.join(os.path.expanduser("~"), "AppData", "Local", "Chrome_NEIS_Profile")
     os.makedirs(profile_dir, exist_ok=True)
     options.add_argument(f"--user-data-dir={profile_dir}")
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option("useAutomationExtension", False)
+    if keep_browser_open:
+        options.add_experimental_option("detach", True)
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_argument("--disable-popup-blocking")
     return webdriver.Chrome(options=options)
@@ -101,11 +103,17 @@ def prepare_run_context(date_str: str, region_override: str | None = None) -> Ru
     )
 
 
-def run_day(date_str: str, password: str, close_after: bool, region_override: str | None = None) -> list[SlotResult]:
+def run_day(
+    date_str: str,
+    password: str,
+    close_after: bool,
+    region_override: str | None = None,
+    keep_browser_open: bool = False,
+) -> list[SlotResult]:
     context = prepare_run_context(date_str, region_override=region_override)
     config.selected_region = context.region_key
 
-    driver = create_driver()
+    driver = create_driver(keep_browser_open=keep_browser_open)
     try:
         utils.open_neis_direct(driver, password)
         month = date_str[:7]
@@ -120,7 +128,8 @@ def run_day(date_str: str, password: str, close_after: bool, region_override: st
             on_update=callback,
         )
     finally:
-        try:
-            driver.quit()
-        except Exception:
-            pass
+        if not keep_browser_open:
+            try:
+                driver.quit()
+            except Exception:
+                pass

@@ -1,4 +1,3 @@
-// @ts-nocheck -- verbatim JS->TSX port; incremental typing is a follow-up
 import React from "react";
 import { Icon } from "./components";
 import { LogDock } from "./log-panel";
@@ -84,7 +83,7 @@ function App() {
   };
   const clearLog = () => setLogLines([]);
 
-  const refreshSlots = (dateStr = toIsoDate(date), options = {}) => {
+  const refreshSlots = (dateStr = toIsoDate(date), options: { attempts?: number; silentRetry?: boolean } = {}) => {
     if (!(window.__isPywebview && window.__isPywebview())) return Promise.resolve();
     const attempts = options.attempts || 3;
     setSlotLoading(true);
@@ -222,7 +221,7 @@ function App() {
       .catch(err => appendLog("ERR", `NEIS Open API 키 저장 실패: ${formatApiError(err)}`));
   };
 
-  const publishNeisTimetableForMobile = (dateStr = toIsoDate(date), options = {}) => {
+  const publishNeisTimetableForMobile = (dateStr = toIsoDate(date), options: { force?: boolean; once?: boolean; silent?: boolean } = {}) => {
     const targetDate = toIsoDate(dateStr);
     const weekKey = weekKeyFromIsoDate(targetDate);
     if (!options.force && options.once && mobileTimetableSyncRef.current.has(weekKey)) {

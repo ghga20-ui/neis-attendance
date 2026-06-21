@@ -93,6 +93,8 @@ function formatSavedAt(isoDate: string): string {
   return `마지막 저장 ${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
 }
 
+const PRIVACY_ACK_KEY = "privacyNoticeAck";
+
 export default function App({
   initialDate = toLocalIsoDate(),
   slots = sampleSlots,
@@ -103,6 +105,9 @@ export default function App({
   onLoadMonth,
 }: AppProps = {}) {
   const [page, setPage] = useState<"lessons" | "sync" | "settings">("lessons");
+  const [privacyAcked, setPrivacyAcked] = useState<boolean>(
+    () => localStorage.getItem(PRIVACY_ACK_KEY) === "1",
+  );
   const [selectedDate, setSelectedDate] = useState(initialDate);
   const [dateInputValue, setDateInputValue] = useState(initialDate);
   const [dateSheetOpen, setDateSheetOpen] = useState(false);
@@ -289,8 +294,19 @@ export default function App({
     void flushAll();
   };
 
+  const ackPrivacy = () => {
+    localStorage.setItem(PRIVACY_ACK_KEY, "1");
+    setPrivacyAcked(true);
+  };
+
   return (
     <div className="mobile-app">
+      {!privacyAcked && (
+        <div className="privacy-banner" role="alert">
+          <span>이 앱은 학생 학번·출결만 처리합니다. 학생 이름은 외부로 전송·저장되지 않습니다.</span>
+          <button type="button" className="privacy-banner-btn" onClick={ackPrivacy}>확인</button>
+        </div>
+      )}
       <header className="top">
         <div>
           <p className="muted">교과 출결</p>
@@ -448,6 +464,13 @@ export default function App({
         </div>
       )}
 
+      <footer className="privacy-footer">
+        <details>
+          <summary>개인정보 처리방침 요약</summary>
+          <p>이 앱은 학생 학번과 출결 정보만 Google Drive에 저장합니다. 학생 이름은 이 기기에만 저장되며 외부 서버로 전송되지 않습니다. 출결 데이터는 담당 교사의 Google Drive에만 기록됩니다. 자세한 내용은 배포 패키지의 <code>docs/legal/privacy-policy.md</code>를 확인하세요.</p>
+        </details>
+      </footer>
+
       {selectedSlot && (
         <div
           className="sheet"
@@ -481,11 +504,10 @@ export default function App({
                     data-mark={mark}
                     type="button"
                     aria-pressed={mark !== "present"}
-                    aria-label={`${student.number} ${student.name} ${markLabel(mark)}`}
+                    aria-label={`${student.number}번 ${markLabel(mark)}`}
                     onClick={() => toggleStudent(student.number)}
                   >
-                    <span>{student.number}</span>
-                    <strong>{student.name}</strong>
+                    <span>{student.number}번</span>
                     <em>{markLabel(mark)}</em>
                   </button>
                 );

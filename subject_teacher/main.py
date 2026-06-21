@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from subject_teacher.gui.app import SubjectTeacherApp
+from subject_teacher.gui.webview_app import start
 
 
 def main() -> None:
-    app = SubjectTeacherApp()
-    app.mainloop()
+    start()
 
 
 if __name__ == "__main__":

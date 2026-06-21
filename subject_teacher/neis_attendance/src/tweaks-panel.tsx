@@ -1,4 +1,3 @@
-// @ts-nocheck -- verbatim JS->TSX port; incremental typing is a follow-up
 import React from "react";
 
 // tweaks-panel.jsx
@@ -243,7 +242,7 @@ export function TweaksPanel({ title = 'Tweaks', children }) {
 
 // ── Layout helpers ──────────────────────────────────────────────────────────
 
-export function TweakSection({ label, children }) {
+export function TweakSection({ label, children }: any) {
   return (
     <>
       <div className="twk-sect">{label}</div>
@@ -397,7 +396,7 @@ export function TweakNumber({ label, value, min, max, step = 1, unit = '', onCha
   );
 }
 
-export function TweakColor({ label, value, onChange }) {
+export function TweakColor({ label, value, onChange }: any) {
   return (
     <div className="twk-row twk-row-h">
       <div className="twk-lbl"><span>{label}</span></div>
@@ -414,8 +413,3 @@ export function TweakButton({ label, onClick, secondary = false }) {
   );
 }
 
-Object.assign(window, {
-  useTweaks, TweaksPanel, TweakSection, TweakRow,
-  TweakSlider, TweakToggle, TweakRadio, TweakSelect,
-  TweakText, TweakNumber, TweakColor, TweakButton,
-});

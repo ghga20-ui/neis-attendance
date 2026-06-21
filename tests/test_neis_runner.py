@@ -50,8 +50,7 @@ def test_skips_slots_already_synced():
     assert [result.slot_id for result in results] == ["mon-1", "mon-2"]
     assert results[0].status == "skipped"
     assert results[1].status == "ok"
-    periods_called = [call_.args[1] for call_ in commands.select_period.call_args_list]
-    assert periods_called == [2]
+    assert commands.select_period.call_args_list == [call(driver, 2, "수학Ⅰ(2-3)", 2, "3")]
 
 
 def test_orders_absent_before_excused_and_toggles_mode():
@@ -81,11 +80,13 @@ def test_orders_absent_before_excused_and_toggles_mode():
     expected = [
         call.click_reset(driver),
         call.ensure_excused_mode(driver, False),
-        call.click_attendance_cell(driver, 5),
+        call.click_attendance_cell(driver, 5, expected_mark="absent"),
         call.ensure_excused_mode(driver, True),
-        call.click_attendance_cell(driver, 15),
+        call.click_attendance_cell(driver, 15, expected_mark="excused"),
         call.ensure_excused_mode(driver, False),
+        call.verify_result_count(driver, 2),
         call.click_save(driver),
+        call.verify_result_count(driver, 2),
         call.click_close(driver),
     ]
     actual = [
@@ -96,6 +97,7 @@ def test_orders_absent_before_excused_and_toggles_mode():
             "click_reset",
             "ensure_excused_mode",
             "click_attendance_cell",
+            "verify_result_count",
             "click_save",
             "click_close",
         }
@@ -177,3 +179,53 @@ def test_prepare_step_can_fall_back_when_periods_already_visible():
 
     assert results[0].status == "ok"
     commands.page_has_period_rows.assert_called_once_with(driver)
+
+
+def test_no_change_after_marking_absence_can_sync_when_result_count_matches():
+    driver = MagicMock()
+    commands = MagicMock()
+    commands.click_save.return_value = "no_change"
+    on_update = MagicMock()
+
+    day = DayInput(
+        date="2026-04-20",
+        year=2026,
+        term=1,
+        slots=[
+            (
+                make_slot("mon-3", 3),
+                make_attendance([Absence(studentNumber=3, markType=MarkType.ABSENT, note="")]),
+            )
+        ],
+    )
+
+    results = process_day(driver, day, close_after=False, cmd=commands, on_update=on_update)
+
+    assert results[0].status == "ok"
+    assert commands.verify_result_count.call_args_list == [call(driver, 1), call(driver, 1)]
+    on_update.assert_called_once_with("mon-3", synced=True, closed=False)
+
+
+def test_result_count_mismatch_fails_without_sync_update():
+    driver = MagicMock()
+    commands = MagicMock()
+    commands.verify_result_count.side_effect = RuntimeError("NEIS result count mismatch: expected 1, got 0")
+    on_update = MagicMock()
+
+    day = DayInput(
+        date="2026-04-20",
+        year=2026,
+        term=1,
+        slots=[
+            (
+                make_slot("mon-3", 3),
+                make_attendance([Absence(studentNumber=3, markType=MarkType.ABSENT, note="")]),
+            )
+        ],
+    )
+
+    results = process_day(driver, day, close_after=False, cmd=commands, on_update=on_update)
+
+    assert results[0].status == "failed"
+    assert "result count mismatch" in results[0].error
+    on_update.assert_not_called()
