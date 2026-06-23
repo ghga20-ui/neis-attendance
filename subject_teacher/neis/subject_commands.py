@@ -619,9 +619,20 @@ def select_period(
 ) -> None:
     xpath = build_period_row_xpath(period, subject_label)
     try:
-        if _click_period_row_by_text(driver, period, subject_label, grade, class_no):
-            _wait_for_student_grid_ready(driver, period, subject_label, grade, class_no)
-            return
+        # The period list refreshes after a date change; matching too early (before
+        # the rows for the new date exist) intermittently fails. Wait for period rows
+        # to be present, then retry the fast/reliable JS text match for a few seconds
+        # before falling back to the slower XPath wait.
+        try:
+            _wait(driver, 10).until(lambda d: page_has_period_rows(d))
+        except Exception:
+            pass
+        deadline = time.time() + 6
+        while time.time() < deadline:
+            if _click_period_row_by_text(driver, period, subject_label, grade, class_no):
+                _wait_for_student_grid_ready(driver, period, subject_label, grade, class_no)
+                return
+            time.sleep(0.4)
 
         row = _wait(driver, 15).until(EC.presence_of_element_located((By.XPATH, xpath)))
         driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", row)
@@ -801,7 +812,9 @@ def _status_cell_has_absent_mark(driver: WebDriver, cell) -> bool:
       values.push(input.getAttribute("aria-label") || "");
       values.push(input.getAttribute("title") || "");
     }
-    return values.join(" ").includes("/");
+    // '/' = 결과, 'Ø' = 인정결과. 담임이 둘 중 무엇으로든 찍어둔 경우를 모두 잡는다.
+    const joined = values.join(" ");
+    return joined.includes("/") || joined.includes("Ø");
     """
     return bool(driver.execute_script(script, cell))
 
@@ -859,20 +872,26 @@ def _wait_for_absent_mark(driver: WebDriver, student_number: int) -> None:
         raise RuntimeError(f"attendance mark '/' not applied for student {student_number}") from exc
 
 
-def click_attendance_cell(driver: WebDriver, student_number: int, expected_mark: str | None = None) -> None:
+def click_attendance_cell(driver: WebDriver, student_number: int, expected_mark: str | None = None) -> bool:
+    """Mark a student's attendance cell.
+
+    Returns True when a new mark was applied, False when skipped because the cell
+    already carries a mark — the homeroom teacher's '/' (결과) or 'Ø' (인정결과).
+    Those must be preserved, not overwritten/toggled off.
+    """
     try:
         cell = _wait(driver).until(lambda d: _student_status_cell(d, student_number))
     except Exception:
         cell = None
 
     if cell is not None:
-        if expected_mark == "absent" and _status_cell_has_absent_mark(driver, cell):
-            return
+        if _status_cell_has_absent_mark(driver, cell):
+            return False  # 담임이 이미 표시(/ 또는 Ø) → 건너뛰기
         _click_grid_cell(driver, cell)
         time.sleep(0.2)
         if expected_mark == "absent":
             _wait_for_absent_mark(driver, student_number)
-        return
+        return True
 
     script = """
     const studentNumber = String(arguments[0]);
@@ -890,7 +909,8 @@ def click_attendance_cell(driver: WebDriver, student_number: int, expected_mark:
         values.push(input.getAttribute('aria-label') || '');
         values.push(input.getAttribute('title') || '');
       }
-      return values.join(' ').includes('/');
+      const j = values.join(' ');
+      return j.includes('/') || j.includes('Ø');
     };
     const candidates = Array.from(document.querySelectorAll('*')).filter((el) => {
       const text = (el.innerText || '').trim();
@@ -923,7 +943,7 @@ def click_attendance_cell(driver: WebDriver, student_number: int, expected_mark:
         (numberText.split(" ").includes(studentNumber) && numberAria.includes("번호"));
       if (!numberMatches || !statusAria.includes("출석상태")) continue;
       if (statusCell) {
-        if (expectedMark === "absent" && cellHasSlash(statusCell)) return true;
+        if (cellHasSlash(statusCell)) return 'skipped';
         statusCell.scrollIntoView({block: "center", inline: "center"});
         const rect = statusCell.getBoundingClientRect();
         const opts = {
@@ -938,12 +958,13 @@ def click_attendance_cell(driver: WebDriver, student_number: int, expected_mark:
         statusCell.dispatchEvent(new PointerEvent("pointerup", opts));
         statusCell.dispatchEvent(new MouseEvent("mouseup", opts));
         statusCell.dispatchEvent(new MouseEvent("click", opts));
-        return true;
+        return 'clicked';
       }
     }
     return false;
     """
-    if not driver.execute_script(script, student_number, expected_mark):
+    outcome = driver.execute_script(script, student_number, expected_mark)
+    if not outcome:
         debug_script = """
         const studentNumber = String(arguments[0]);
         const out = [];
@@ -971,8 +992,11 @@ def click_attendance_cell(driver: WebDriver, student_number: int, expected_mark:
         with open("tmp_student_candidates.json", "w", encoding="utf-8") as f:
             json.dump(driver.execute_script(debug_script, student_number), f, ensure_ascii=False, indent=2)
         raise RuntimeError(f"attendance cell not found for student {student_number}")
+    if outcome == "skipped":
+        return False  # 담임이 이미 표시(/ 또는 Ø) → 건너뛰기
     if expected_mark == "absent":
         _wait_for_absent_mark(driver, student_number)
+    return True
 
 
 def fill_note(driver: WebDriver, student_number: int, note: str) -> None:
@@ -1116,11 +1140,14 @@ def _dialog_button_for_text(driver: WebDriver, message_texts: list[str], button_
       "[role='button']",
       ".cl-button",
       ".cl-text-wrapper",
-      ".cl-text",
       "[data-role='button']",
       "input[type='button']",
       "input[type='submit']"
-    ].join(","))).filter(isVisible);
+    ].join(","))).filter(isVisible)
+      // The dialog header/title can also read '확인' (cl-dialog-header > .cl-text).
+      // Excluding the header (and dropping the bare .cl-text selector) ensures we
+      // click the real action button, not the title bar.
+      .filter((el) => !el.closest(".cl-dialog-header"));
 
     const okButton = controls.find((el) => compact(textOf(el)) === compactButtonText) ||
       controls.find((el) => {

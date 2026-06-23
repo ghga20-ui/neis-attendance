@@ -305,8 +305,25 @@ def test_click_attendance_cell_skips_absent_cell_that_already_has_slash(monkeypa
     monkeypatch.setattr(subject_commands, "_status_cell_has_absent_mark", lambda _driver, _cell: True)
     monkeypatch.setattr(subject_commands, "_click_grid_cell", lambda _driver, _cell: clicked.append(_cell))
 
-    subject_commands.click_attendance_cell(driver, 3, expected_mark="absent")
+    result = subject_commands.click_attendance_cell(driver, 3, expected_mark="absent")
 
+    assert result is False  # 이미 표시(/ 또는 Ø) → 건너뜀
+    assert clicked == []
+
+
+def test_click_attendance_cell_skips_excused_cell_already_marked(monkeypatch):
+    # 담임이 'Ø'(인정결과) 등으로 이미 찍은 경우, excused 의도여도 건너뛴다.
+    cell = object()
+    driver = object()
+    clicked = []
+
+    monkeypatch.setattr(subject_commands, "_wait", lambda *_args, **_kwargs: _FakeWait(cell))
+    monkeypatch.setattr(subject_commands, "_status_cell_has_absent_mark", lambda _driver, _cell: True)
+    monkeypatch.setattr(subject_commands, "_click_grid_cell", lambda _driver, _cell: clicked.append(_cell))
+
+    result = subject_commands.click_attendance_cell(driver, 7, expected_mark="excused")
+
+    assert result is False
     assert clicked == []
 
 
@@ -322,7 +339,8 @@ def test_click_attendance_cell_clicks_empty_absent_cell_once(monkeypatch):
     monkeypatch.setattr(subject_commands, "_wait_for_absent_mark", lambda _driver, number: verified.append(number))
     monkeypatch.setattr(subject_commands.time, "sleep", lambda _seconds: None)
 
-    subject_commands.click_attendance_cell(driver, 3, expected_mark="absent")
+    result = subject_commands.click_attendance_cell(driver, 3, expected_mark="absent")
 
+    assert result is True  # 새로 찍음
     assert clicked == [cell]
     assert verified == [3]

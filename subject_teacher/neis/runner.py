@@ -65,18 +65,26 @@ def process_day(
 
             absent = [item for item in attendance.absences if item.mark_type.value == "absent"]
             excused = [item for item in attendance.absences if item.mark_type.value == "excused"]
-            expected_result_count = len(absent) + len(excused)
+
+            # 담임이 이미 찍어둔(/ 결과, Ø 인정결과) 수. 그런 학생은 click_attendance_cell이
+            # 건너뛰고 False를 돌려주므로, 기대 카운트는 "기존 + 새로 찍은 수"로 잡아야
+            # 담임 마크가 있어도 검증/저장이 깨지지 않는다.
+            pre_existing = cmd.visible_result_count(driver) or 0
+            newly_marked = 0
 
             cmd.ensure_excused_mode(driver, False)
             for item in absent:
-                cmd.click_attendance_cell(driver, item.student_number, expected_mark="absent")
+                if cmd.click_attendance_cell(driver, item.student_number, expected_mark="absent"):
+                    newly_marked += 1
 
             if excused:
                 cmd.ensure_excused_mode(driver, True)
                 for item in excused:
-                    cmd.click_attendance_cell(driver, item.student_number, expected_mark="excused")
+                    if cmd.click_attendance_cell(driver, item.student_number, expected_mark="excused"):
+                        newly_marked += 1
                 cmd.ensure_excused_mode(driver, False)
 
+            expected_result_count = pre_existing + newly_marked
             cmd.verify_result_count(driver, expected_result_count)
             cmd.click_save(driver)
             cmd.verify_result_count(driver, expected_result_count)

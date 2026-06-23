@@ -35,3 +35,17 @@ Thumbs.db
 .omx/
 
 .worktrees
+
+# NEIS automation / verification-harness diagnostic dumps (generated at runtime)
+tmp_*.json
+tmp_*.txt
+
+# Superpowers / SDD scratch
+.superpowers/
+
+# Local tooling caches & captures
+.codex
+.playwright-cli/
+.playwright-mcp/
+session/
+login.png
