@@ -812,7 +812,9 @@ def _status_cell_has_absent_mark(driver: WebDriver, cell) -> bool:
       values.push(input.getAttribute("aria-label") || "");
       values.push(input.getAttribute("title") || "");
     }
-    return values.join(" ").includes("/");
+    // '/' = 결과, 'Ø' = 인정결과. 담임이 둘 중 무엇으로든 찍어둔 경우를 모두 잡는다.
+    const joined = values.join(" ");
+    return joined.includes("/") || joined.includes("Ø");
     """
     return bool(driver.execute_script(script, cell))
 
@@ -870,20 +872,26 @@ def _wait_for_absent_mark(driver: WebDriver, student_number: int) -> None:
         raise RuntimeError(f"attendance mark '/' not applied for student {student_number}") from exc
 
 
-def click_attendance_cell(driver: WebDriver, student_number: int, expected_mark: str | None = None) -> None:
+def click_attendance_cell(driver: WebDriver, student_number: int, expected_mark: str | None = None) -> bool:
+    """Mark a student's attendance cell.
+
+    Returns True when a new mark was applied, False when skipped because the cell
+    already carries a mark — the homeroom teacher's '/' (결과) or 'Ø' (인정결과).
+    Those must be preserved, not overwritten/toggled off.
+    """
     try:
         cell = _wait(driver).until(lambda d: _student_status_cell(d, student_number))
     except Exception:
         cell = None
 
     if cell is not None:
-        if expected_mark == "absent" and _status_cell_has_absent_mark(driver, cell):
-            return
+        if _status_cell_has_absent_mark(driver, cell):
+            return False  # 담임이 이미 표시(/ 또는 Ø) → 건너뛰기
         _click_grid_cell(driver, cell)
         time.sleep(0.2)
         if expected_mark == "absent":
             _wait_for_absent_mark(driver, student_number)
-        return
+        return True
 
     script = """
     const studentNumber = String(arguments[0]);
@@ -901,7 +909,8 @@ def click_attendance_cell(driver: WebDriver, student_number: int, expected_mark:
         values.push(input.getAttribute('aria-label') || '');
         values.push(input.getAttribute('title') || '');
       }
-      return values.join(' ').includes('/');
+      const j = values.join(' ');
+      return j.includes('/') || j.includes('Ø');
     };
     const candidates = Array.from(document.querySelectorAll('*')).filter((el) => {
       const text = (el.innerText || '').trim();
@@ -934,7 +943,7 @@ def click_attendance_cell(driver: WebDriver, student_number: int, expected_mark:
         (numberText.split(" ").includes(studentNumber) && numberAria.includes("번호"));
       if (!numberMatches || !statusAria.includes("출석상태")) continue;
       if (statusCell) {
-        if (expectedMark === "absent" && cellHasSlash(statusCell)) return true;
+        if (cellHasSlash(statusCell)) return 'skipped';
         statusCell.scrollIntoView({block: "center", inline: "center"});
         const rect = statusCell.getBoundingClientRect();
         const opts = {
@@ -949,12 +958,13 @@ def click_attendance_cell(driver: WebDriver, student_number: int, expected_mark:
         statusCell.dispatchEvent(new PointerEvent("pointerup", opts));
         statusCell.dispatchEvent(new MouseEvent("mouseup", opts));
         statusCell.dispatchEvent(new MouseEvent("click", opts));
-        return true;
+        return 'clicked';
       }
     }
     return false;
     """
-    if not driver.execute_script(script, student_number, expected_mark):
+    outcome = driver.execute_script(script, student_number, expected_mark)
+    if not outcome:
         debug_script = """
         const studentNumber = String(arguments[0]);
         const out = [];
@@ -982,8 +992,11 @@ def click_attendance_cell(driver: WebDriver, student_number: int, expected_mark:
         with open("tmp_student_candidates.json", "w", encoding="utf-8") as f:
             json.dump(driver.execute_script(debug_script, student_number), f, ensure_ascii=False, indent=2)
         raise RuntimeError(f"attendance cell not found for student {student_number}")
+    if outcome == "skipped":
+        return False  # 담임이 이미 표시(/ 또는 Ø) → 건너뛰기
     if expected_mark == "absent":
         _wait_for_absent_mark(driver, student_number)
+    return True
 
 
 def fill_note(driver: WebDriver, student_number: int, note: str) -> None:

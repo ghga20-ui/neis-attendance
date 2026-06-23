@@ -56,6 +56,7 @@ def test_skips_slots_already_synced():
 def test_orders_absent_before_excused_and_toggles_mode():
     driver = MagicMock()
     commands = MagicMock()
+    commands.visible_result_count.return_value = 0  # 담임 기존 마크 없음
     on_update = MagicMock()
 
     day = DayInput(
@@ -185,6 +186,7 @@ def test_no_change_after_marking_absence_can_sync_when_result_count_matches():
     driver = MagicMock()
     commands = MagicMock()
     commands.click_save.return_value = "no_change"
+    commands.visible_result_count.return_value = 0  # 담임 기존 마크 없음
     on_update = MagicMock()
 
     day = DayInput(
@@ -229,3 +231,36 @@ def test_result_count_mismatch_fails_without_sync_update():
     assert results[0].status == "failed"
     assert "result count mismatch" in results[0].error
     on_update.assert_not_called()
+
+
+def test_skips_homeroom_marked_students_and_counts_only_new():
+    driver = MagicMock()
+    commands = MagicMock()
+    commands.visible_result_count.return_value = 1  # 담임이 1명 미리 표시(/, Ø)
+    # 학생3 = 이미 표시되어 건너뜀(False), 학생5 = 새로 찍음(True)
+    commands.click_attendance_cell.side_effect = [False, True]
+    on_update = MagicMock()
+
+    day = DayInput(
+        date="2026-04-17",
+        year=2026,
+        term=1,
+        slots=[
+            (
+                make_slot("mon-1", 1),
+                make_attendance(
+                    [
+                        Absence(studentNumber=3, markType=MarkType.ABSENT, note=""),
+                        Absence(studentNumber=5, markType=MarkType.ABSENT, note=""),
+                    ]
+                ),
+            )
+        ],
+    )
+
+    results = process_day(driver, day, close_after=False, cmd=commands, on_update=on_update)
+
+    assert results[0].status == "ok"
+    # 기대 카운트 = 담임 기존(1) + 새로 찍은(1) = 2 (건너뛴 학생3은 더하지 않음)
+    assert commands.verify_result_count.call_args_list == [call(driver, 2), call(driver, 2)]
+    on_update.assert_called_once_with("mon-1", synced=True, closed=False)
