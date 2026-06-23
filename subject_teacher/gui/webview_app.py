@@ -27,7 +27,7 @@ def _html_url() -> str:
 def start() -> None:
     api = Api()
     window = webview.create_window(
-        title="나이스 출결관리 프로 · 교과교사용",
+        title="체크온 · 교과 출결",
         url=_html_url(),
         js_api=api,
         width=1440,

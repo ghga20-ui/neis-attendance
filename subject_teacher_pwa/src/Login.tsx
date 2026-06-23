@@ -10,8 +10,8 @@ export default function Login({ onSignIn, busy, error, notConfigured }: LoginPro
   return (
     <div className="login-screen">
       <div className="login-card">
-        <div className="login-mark" aria-hidden="true">출</div>
-        <h1>나이스 교과 출결</h1>
+        <div className="login-mark" aria-hidden="true">✓</div>
+        <h1>체크온</h1>
         <p className="login-sub">수업 직후 모바일에서 출결을 체크하고 Google Drive에 바로 저장합니다.</p>
 
         {notConfigured ? (

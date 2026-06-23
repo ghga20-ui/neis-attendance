@@ -1,6 +1,7 @@
 {
-  "name": "나이스 교과 출결",
-  "short_name": "교과출결",
+  "name": "체크온",
+  "short_name": "체크온",
+  "description": "수업 직후 출결을 체크하고 자동으로 정리해 주는 교사용 앱.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f2f2f7",
@@ -10,7 +11,25 @@
       "src": "/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
