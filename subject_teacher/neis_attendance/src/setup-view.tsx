@@ -671,3 +671,57 @@ export const PlaceholderView = ({ title, icon, body }) => (
   </>
 );
 
+export const ConnectionView = ({ driveUser, reconnect, reconnecting, loadSetupData }) => {
+  const connected = Boolean(driveUser?.emailAddress);
+  const displayName = driveUser?.displayName || "";
+  const email = driveUser?.emailAddress || "";
+
+  return (
+    <>
+      <div className="topbar">
+        <Icon name="cloud" size={16}/>
+        <span className="title">연결</span>
+        <div className="topbar-actions">
+          <button className="tb-btn" onClick={loadSetupData}>
+            <Icon name="refresh" size={14}/> 연결 확인
+          </button>
+        </div>
+      </div>
+      <div className="content">
+        <div className="page-hero">
+          <div>
+            <h1>연결</h1>
+            <div className="subtitle">출결 자료를 안전하게 저장·동기화하려면 연결이 필요해요.</div>
+          </div>
+        </div>
+
+        <div className="card card-pad connect-status-card">
+          <div className="connect-status-row">
+            <div className={`connect-status-icon ${connected ? "ok" : "warn"}`}>
+              <Icon name="cloud" size={24}/>
+            </div>
+            <div className="connect-status-info">
+              <div className="connect-status-label">
+                {connected ? "연결됨" : "연결이 필요해요"}
+              </div>
+              {connected ? (
+                <div className="connect-status-account">
+                  {displayName && <span className="connect-name">{displayName}</span>}
+                  {displayName && email && <span className="connect-sep">·</span>}
+                  {email && <span className="connect-email">{email}</span>}
+                </div>
+              ) : (
+                <div className="connect-status-account">계정이 연결되지 않았습니다.</div>
+              )}
+            </div>
+            <button className="tb-btn primary" disabled={reconnecting} onClick={reconnect}>
+              <Icon name={reconnecting ? "clock" : "refresh"} size={14}/>
+              {reconnecting ? "연결 중…" : "다시 연결"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+

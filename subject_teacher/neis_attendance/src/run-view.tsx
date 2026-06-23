@@ -238,19 +238,10 @@ export const RunView = ({ date, setDate, password, setPassword, closeAfter, setC
           }} disabled={slotLoading}>
             <Icon name={slotLoading ? "clock" : "refresh"} size={14}/> {slotLoading ? "불러오는 중" : "새로고침"}
           </button>
-          <span className="divider"/>
-          <Checkbox checked={closeAfter} onChange={setCloseAfter} label="처리 후 출결 마감까지 함"/>
-          <button className="run-cta" onClick={startRun} disabled={running || pending === 0}>
-            {running
-              ? <><Icon name="clock" size={16}/> 반영 중… {progress.done}/{progress.total}</>
-              : pending === 0
-                ? <><Icon name="check" size={14}/> 모두 반영됨</>
-                : <><Icon name="play" size={14}/> NEIS 반영 실행 · {pending}건</>}
-          </button>
         </div>
       </div>
 
-      <div className="content">
+      <div className="content run-content">
         <div className="page-hero">
           <div>
             <h1>{formatDateHeading(date)}</h1>
@@ -385,6 +376,22 @@ export const RunView = ({ date, setDate, password, setPassword, closeAfter, setC
           appendLog={appendLog}
         />
       )}
+
+      <div className="run-action-bar">
+        <span className="run-action-bar-status">
+          {pending > 0
+            ? <><span className="run-action-bar-badge">{pending}</span> 반영 대기 {pending}건</>
+            : <><Icon name="check" size={14}/> 모두 반영됨</>}
+        </span>
+        <Checkbox checked={closeAfter} onChange={setCloseAfter} label="출결 마감까지"/>
+        <button className="run-cta run-cta-lg" onClick={startRun} disabled={running || pending === 0}>
+          {running
+            ? <><Icon name="clock" size={16}/> 반영 중… {progress.done}/{progress.total}</>
+            : pending === 0
+              ? <><Icon name="check" size={14}/> 모두 반영됨</>
+              : <><Icon name="play" size={14}/> NEIS 반영 실행 · {pending}건</>}
+        </button>
+      </div>
     </>
   );
 };

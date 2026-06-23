@@ -831,3 +831,101 @@ h1, h2, h3, h4 { margin: 0; font-family: var(--font-disp); letter-spacing: -0.01
 }
 .sb-loglink:hover { background: var(--hover); color: var(--fg-2); }
 [data-sidebar="collapsed"] .sb-loglink { display: none; }
+
+/* ===== Run screen sticky bottom action bar ===== */
+.run-content {
+  padding-bottom: 96px !important; /* ensure last row isn't hidden behind the bar */
+}
+
+.run-action-bar {
+  position: sticky;
+  bottom: 0;
+  left: 0; right: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 28px;
+  background: var(--glass);
+  -webkit-backdrop-filter: saturate(180%) blur(28px);
+  backdrop-filter: saturate(180%) blur(28px);
+  border-top: 1px solid var(--sep);
+  box-shadow: 0 -4px 16px rgba(0,0,0,.06);
+}
+
+.run-action-bar-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--fg-2);
+  flex: 1;
+}
+
+.run-action-bar-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 0 6px;
+}
+
+.run-cta-lg {
+  padding: 10px 22px !important;
+  font-size: 15px !important;
+  border-radius: 12px !important;
+  box-shadow: 0 6px 18px rgba(10,132,255,.35) !important;
+}
+
+/* ===== Connection view ===== */
+.connect-status-card {
+  margin-top: 4px;
+}
+
+.connect-status-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.connect-status-icon {
+  width: 48px; height: 48px; flex: 0 0 48px;
+  border-radius: 14px;
+  display: grid; place-items: center;
+}
+.connect-status-icon.ok   { background: rgba(48,209,88,.14);  color: #248A3D; }
+.connect-status-icon.warn { background: rgba(255,159,10,.16); color: #C77A00; }
+[data-theme="dark"] .connect-status-icon.ok   { color: #30D158; }
+[data-theme="dark"] .connect-status-icon.warn { color: #FF9F0A; }
+
+.connect-status-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.connect-status-label {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+}
+
+.connect-status-account {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 3px;
+  font-size: 13px;
+  color: var(--fg-3);
+}
+
+.connect-name  { font-weight: 500; color: var(--fg-2); }
+.connect-sep   { color: var(--fg-4); }
+.connect-email { color: var(--fg-3); }

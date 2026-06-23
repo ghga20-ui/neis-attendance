@@ -2,7 +2,7 @@ import React from "react";
 import { Icon } from "./components";
 import { LogDock } from "./log-panel";
 import { RunView } from "./run-view";
-import { BasicsView, TimetableView, RosterView, DriveView, AuthView, PlaceholderView } from "./setup-view";
+import { BasicsView, TimetableView, RosterView, DriveView, AuthView, PlaceholderView, ConnectionView } from "./setup-view";
 import { TweaksPanel, useTweaks, TweakSection, TweakRadio, TweakToggle, TweakSlider, TweakColor, TweakSelect } from "./tweaks-panel";
 import { TODAY_SLOTS, TIMETABLE, ROSTERS } from "./data";
 import {
@@ -22,6 +22,7 @@ const NAV = [
     { key: "basics",    label: "기본 정보", icon: "gear" },
     { key: "timetable", label: "시간표",   icon: "board" },
     { key: "roster",    label: "학생 명부", icon: "users" },
+    { key: "connect",   label: "연결",     icon: "cloud" },
   ]},
 ];
 
@@ -464,6 +465,7 @@ function App() {
         {page === "basics"    && <BasicsView settings={settings} setSettings={setSettings} driveUser={driveUser} appendLog={appendLog} loadSetupData={loadSetupData} saveSettings={saveSettings}/>}
         {page === "timetable" && <TimetableView rows={timetable} setRows={setTimetable} settings={settings} setSettings={setSettings} neisApiKey={neisApiKey} setNeisApiKey={setNeisApiKey} saveNeisApiKey={saveNeisApiKey} appendLog={appendLog} loadSetupData={loadSetupData} saveSettings={saveSettings} saveTimetable={saveTimetable} previewNeisPublicTimetable={previewNeisPublicTimetable} findNeisSubjectCandidates={findNeisSubjectCandidates} publishNeisTimetableForMobile={publishNeisTimetableForMobile}/>}
         {page === "roster"    && <RosterView rosters={rosters} setRosters={setRosters} appendLog={appendLog} loadSetupData={loadSetupData} saveRosters={saveRosters} importRosterFile={importRosterFile}/>}
+        {page === "connect"   && <ConnectionView driveUser={driveUser} reconnect={reconnect} reconnecting={reconnecting} loadSetupData={loadSetupData}/>}
       </main>
 
       {logOpen && <LogDock lines={logLines} onClose={() => setLogOpen(false)} clear={clearLog}/>}

@@ -18,6 +18,7 @@ export interface DesktopApi {
   publish_neis_timetable_for_week(dateStr: string): Promise<string>;
   find_neis_subject_candidates(payloadJson: string): Promise<string>;
   start_run(dateStr: string, password: string, closeAfter: boolean): Promise<string>;
+  reconnect(): Promise<string>;
 }
 
 /** A log line pushed from Python via evaluate_js("window.__pushLog(...)"). */
