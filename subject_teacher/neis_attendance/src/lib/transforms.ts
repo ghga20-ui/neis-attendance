@@ -92,7 +92,7 @@ export const parseJsonResult = (raw: string): any => {
 
 export const formatApiError = (error: unknown): string => {
   if (error instanceof ApiResultError && error.code === "reauth_required") {
-    return `${error.message} 왼쪽의 OAuth 인증 화면에서 계정 확인을 눌러 다시 연결해 주세요.`;
+    return `${error.message} 왼쪽의 Google 계정 연결 화면에서 계정 확인을 눌러 다시 연결해 주세요.`;
   }
   if (error instanceof Error) return error.message;
   return String(error);

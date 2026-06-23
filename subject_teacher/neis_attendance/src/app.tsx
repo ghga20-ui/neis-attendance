@@ -50,8 +50,8 @@ function App() {
   const [logOpen, setLogOpen] = useState<any>(false);
   const [logLines, setLogLines] = useState<any>([
     { ts: "09:02:14", lv: "안내", msg: "앱 실행 — subject_teacher v0.4.1" },
-    { ts: "09:02:14", lv: "완료", msg: "Drive appDataFolder 연결 · 3개 파일 감지" },
-    { ts: "09:02:15", lv: "안내", msg: "settings.json, timetable.json, students.json 동기화 완료" },
+    { ts: "09:02:14", lv: "완료", msg: "Google Drive 연결 · 3개 파일 감지" },
+    { ts: "09:02:15", lv: "완료", msg: "설정·시간표·학생 명부 불러오기 완료" },
     { ts: "09:02:15", lv: "완료", msg: "오늘 수업 6건 로드 — 3건 반영됨, 3건 대기" },
   ]);
   const [settings, setSettings] = useState<any>({

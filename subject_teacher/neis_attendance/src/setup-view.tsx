@@ -611,9 +611,9 @@ export const DriveView = ({ appendLog, driveUser, loadSetupData }) => (
     </div>
     <div className="content">
       <div className="page-hero">
-        <div><h1>Google Drive</h1><div className="subtitle">appDataFolder에 저장된 설정·시간표·학생 명부 파일을 관리합니다.</div></div>
+        <div><h1>Google Drive</h1><div className="subtitle">이 앱 전용 비공개 영역에 저장된 설정·시간표·학생 명부를 관리합니다.</div></div>
       </div>
-      <Banner kind="info" icon="info" title="appDataFolder는 이 앱만 접근할 수 있는 비공개 영역입니다">
+      <Banner kind="info" icon="info" title="이 앱 전용 비공개 저장 공간 — 다른 사람이 Google Drive에서 볼 수 없습니다">
         현재 연결 계정: {accountLabel(driveUser)}
       </Banner>
       <div className="list-group" style={{marginTop:16}}>
@@ -624,7 +624,7 @@ export const DriveView = ({ appendLog, driveUser, loadSetupData }) => (
         ].map(f => (
           <div key={f.name} className="list-row" style={{gridTemplateColumns:"auto 1fr auto auto auto"}}>
             <div className="period"><span className="p-num" style={{background:"var(--accent-soft)",color:"var(--accent)"}}><Icon name={f.icon} size={14}/></span></div>
-            <div className="subject">{f.name}<div className="sub2">appDataFolder · JSON</div></div>
+            <div className="subject">{f.name}<div className="sub2">앱 전용 저장소</div></div>
             <div className="klass">{f.size}</div>
             <div className="klass">{f.ts}</div>
             <button className="tb-btn ghost" onClick={() => appendLog("INFO", `${f.name} 다운로드`)}>다운로드</button>
@@ -639,10 +639,10 @@ export const AuthView = ({ appendLog, driveUser, loadSetupData }) => (
   <>
     <div className="topbar">
       <Icon name="key" size={16}/>
-      <span className="title">OAuth 인증</span>
+      <span className="title">Google 계정 연결</span>
     </div>
     <div className="content">
-      <div className="page-hero"><div><h1>OAuth 인증</h1><div className="subtitle">Drive 읽기·쓰기 권한을 관리합니다.</div></div></div>
+      <div className="page-hero"><div><h1>Google 계정 연결</h1><div className="subtitle">이 앱이 Google Drive에 파일을 저장하려면 계정 연결이 필요합니다.</div></div></div>
       <div className="card card-pad">
         <div style={{display:"flex",alignItems:"center",gap:14}}>
           <div style={{width:44,height:44,borderRadius:12,background:"var(--accent-soft)",display:"grid",placeItems:"center",color:"var(--accent)"}}>
@@ -650,7 +650,7 @@ export const AuthView = ({ appendLog, driveUser, loadSetupData }) => (
           </div>
           <div style={{flex:1}}>
             <div style={{fontWeight:600}}>{accountLabel(driveUser)}</div>
-            <div style={{fontSize:13,color:"var(--fg-3)"}}>Drive appDataFolder 권한</div>
+            <div style={{fontSize:13,color:"var(--fg-3)"}}>Drive 파일 저장 권한</div>
           </div>
           <button className="tb-btn primary" onClick={loadSetupData}>
             <Icon name="refresh" size={14}/> 계정 확인
