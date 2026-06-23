@@ -16,7 +16,7 @@ describe("mobile app", () => {
     await user.click(screen.getByRole("button", { name: /2-1 문학/ }));
     expect(screen.getByRole("heading", { name: "2-1 문학" })).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /3 김도윤/ }));
+    await user.click(screen.getByRole("button", { name: /^3번 / }));
     expect(screen.getByText("저장 전 요약")).toBeInTheDocument();
     expect(screen.getByText("3번 결과")).toBeInTheDocument();
 
@@ -47,7 +47,7 @@ describe("mobile app", () => {
     render(<App initialDate="2026-05-04" />);
 
     await user.click(screen.getByRole("button", { name: /2-1 문학/ }));
-    await user.click(screen.getByRole("button", { name: /3 김도윤/ }));
+    await user.click(screen.getByRole("button", { name: /^3번 / }));
     await user.click(screen.getByRole("button", { name: "저장" }));
     expect(screen.getByText("결과 1명")).toBeInTheDocument();
 
@@ -118,7 +118,7 @@ describe("mobile app", () => {
     render(<App initialDate="2026-05-04" onSaveSlot={onSaveSlot} />);
 
     await user.click(screen.getByRole("button", { name: /2-1 문학/ }));
-    await user.click(screen.getByRole("button", { name: /3 김도윤/ }));
+    await user.click(screen.getByRole("button", { name: /^3번 / }));
     await user.click(screen.getByRole("button", { name: "저장" }));
 
     await waitFor(() => expect(screen.getByText("Drive 완료")).toBeInTheDocument());
@@ -138,11 +138,12 @@ describe("mobile app", () => {
     render(<App initialDate="2026-05-04" onSaveSlot={onSaveSlot} />);
 
     await user.click(screen.getByRole("button", { name: /2-1 문학/ }));
-    await user.click(screen.getByRole("button", { name: /3 김도윤/ }));
+    await user.click(screen.getByRole("button", { name: /^3번 / }));
     await user.click(screen.getByRole("button", { name: "저장" }));
 
     await user.click(screen.getByRole("button", { name: "동기화" }));
-    const retry = await screen.findByRole("button", { name: /다시 시도/ });
+    // Disambiguate from the global failure banner's "다시 시도" button.
+    const retry = await screen.findByRole("button", { name: "실패한 1건 다시 시도" });
     await user.click(retry);
 
     await waitFor(() => expect(screen.getByText("완료 1건")).toBeInTheDocument());

@@ -115,6 +115,16 @@ export default function App({
   const [attendanceByDate, setAttendanceByDate] = useState<AttendanceByDate>(initialAttendance ?? {});
   const [drafts, setDrafts] = useState<Record<string, MarksByStudent>>({});
   const [queue, setQueue] = useState<SaveQueueItem[]>([]);
+  const [isOnline, setIsOnline] = useState<boolean>(
+    () => (typeof navigator === "undefined" ? true : navigator.onLine),
+  );
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<number | null>(null);
+  const showToast = useCallback((message: string) => {
+    setToast(message);
+    if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(null), 2600);
+  }, []);
   const visibleSlots = getLessonsForDate(slots, selectedDate);
   const selectedSlot = slots.find((slot) => slot.id === selectedSlotId) ?? null;
   const selectedRoster = selectedSlot ? rosters[classKey(selectedSlot)] ?? [] : [];
@@ -133,7 +143,7 @@ export default function App({
     const unchecked = Math.max(visibleSlots.length - checked, 0);
     return { checked, failed, pending, unchecked };
   }, [attendanceForDate, queue, visibleSlots]);
-  const driveSyncLabel = deriveDriveSyncLabel({ isOnline: true, queue });
+  const driveSyncLabel = deriveDriveSyncLabel({ isOnline, queue });
 
   const openLesson = (slot: TimetableSlot) => {
     const roster = rosters[classKey(slot)] ?? [];
@@ -240,13 +250,20 @@ export default function App({
     void persistQueue(queue);
   }, [queue]);
 
-  // Auto-retry uploads when the device comes back online.
+  // Track connectivity for the offline banner, and auto-retry uploads when the
+  // device comes back online.
   useEffect(() => {
-    const handler = () => {
+    const goOnline = () => {
+      setIsOnline(true);
       void flushAllRef.current();
     };
-    window.addEventListener("online", handler);
-    return () => window.removeEventListener("online", handler);
+    const goOffline = () => setIsOnline(false);
+    window.addEventListener("online", goOnline);
+    window.addEventListener("offline", goOffline);
+    return () => {
+      window.removeEventListener("online", goOnline);
+      window.removeEventListener("offline", goOffline);
+    };
   }, []);
 
   // Drive splits attendance into monthly files; we preload only the current
@@ -287,6 +304,7 @@ export default function App({
     }));
     setQueue((current) => enqueueSave(current, { date, slotId, payload: saved }));
     setSelectedSlotId(null);
+    showToast(isOnline ? "저장됐어요" : "기기에 저장됨 · 연결되면 자동 반영");
     void flushSave(date, slotId, saved);
   };
 
@@ -332,6 +350,18 @@ export default function App({
         </div>
         <div className="ring">{counts.checked}/{visibleSlots.length}</div>
       </button>
+
+      {!isOnline && (
+        <div className="status-banner offline" role="status">
+          인터넷에 연결되어 있지 않아요. 저장은 기기에 보관되고, 연결되면 자동으로 반영됩니다.
+        </div>
+      )}
+      {onSaveSlot && counts.failed > 0 && (
+        <div className="status-banner failed" role="alert">
+          <span>저장 실패 {counts.failed}건이 있어요.</span>
+          <button type="button" onClick={retryFailed}>다시 시도</button>
+        </div>
+      )}
 
       {page === "lessons" && (
         <main className="lesson-list">
@@ -526,6 +556,8 @@ export default function App({
           </div>
         </div>
       )}
+
+      {toast && <div className="toast" role="status">{toast}</div>}
     </div>
   );
 }

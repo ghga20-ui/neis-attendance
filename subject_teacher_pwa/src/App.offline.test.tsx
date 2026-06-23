@@ -14,7 +14,7 @@ beforeEach(() => {
 
 async function saveAbsenceForFirstLesson(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: /2-1 문학/ }));
-  await user.click(screen.getByRole("button", { name: /3 김도윤/ }));
+  await user.click(screen.getByRole("button", { name: /^3번 / }));
   await user.click(screen.getByRole("button", { name: "저장" }));
 }
 
@@ -48,6 +48,8 @@ describe("offline queue persistence in the app", () => {
 
     await saveAbsenceForFirstLesson(user);
     await waitFor(() => expect(screen.getByText("Drive 실패")).toBeInTheDocument());
+    // A failure surfaces a banner with a retry button right on the lessons page.
+    expect(screen.getByText("저장 실패 1건이 있어요.")).toBeInTheDocument();
 
     await act(async () => {
       window.dispatchEvent(new Event("online"));
@@ -55,5 +57,22 @@ describe("offline queue persistence in the app", () => {
 
     await waitFor(() => expect(screen.getByText("Drive 완료")).toBeInTheDocument());
     expect(onSaveSlot).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows an offline banner while disconnected and hides it on reconnect", async () => {
+    render(<App initialDate="2026-05-04" />);
+    expect(screen.queryByText(/인터넷에 연결되어 있지 않아요/)).not.toBeInTheDocument();
+
+    await act(async () => {
+      window.dispatchEvent(new Event("offline"));
+    });
+    expect(screen.getByText(/인터넷에 연결되어 있지 않아요/)).toBeInTheDocument();
+
+    await act(async () => {
+      window.dispatchEvent(new Event("online"));
+    });
+    await waitFor(() =>
+      expect(screen.queryByText(/인터넷에 연결되어 있지 않아요/)).not.toBeInTheDocument(),
+    );
   });
 });
