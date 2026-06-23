@@ -16,7 +16,7 @@
   --sidebar:      rgba(246,246,248,.78);
   --fg:           #111114;
   --fg-2:         #3A3A3C;
-  --fg-3:         #8E8E93;
+  --fg-3:         #6B6B70;  /* ↑ from #8E8E93 — WCAG AA body contrast */
   --fg-4:         #AEAEB2;
   --sep:          rgba(60,60,67,.14);
   --sep-strong:   rgba(60,60,67,.24);
@@ -49,7 +49,7 @@
   --sidebar:   rgba(28,28,30,.78);
   --fg:        #F5F5F7;
   --fg-2:      #D1D1D6;
-  --fg-3:      #8E8E93;
+  --fg-3:      #8E8E93;  /* dark: unchanged — already meets contrast on dark bg */
   --fg-4:      #636366;
   --sep:       rgba(255,255,255,.09);
   --sep-strong:rgba(255,255,255,.18);
@@ -68,13 +68,14 @@ body {
   color: var(--fg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-size: 14.5px;
-  letter-spacing: -0.01em;
+  font-size: 15.5px;  /* 15–16px body baseline per brief */
+  letter-spacing: -0.008em;  /* softened from -0.01em */
   overflow: hidden;
 }
 button { font-family: inherit; color: inherit; }
 input, select, textarea { font-family: inherit; color: inherit; }
-h1, h2, h3, h4 { margin: 0; font-family: var(--font-disp); letter-spacing: -0.022em; }
+h1, h2, h3, h4 { margin: 0; font-family: var(--font-disp); letter-spacing: -0.018em; }  /* softened from -0.022em */
+/* Typography 3-tier: h1 30px/700 → h2 19px/600 → body 15.5px/400 → desc 13px/400 */
 ::selection { background: var(--accent-soft); }
 
 /* ===== App shell ===== */
@@ -578,7 +579,7 @@ h1, h2, h3, h4 { margin: 0; font-family: var(--font-disp); letter-spacing: -0.02
 .mode-help {
   color: var(--fg-3);
   background: var(--bg-2);
-  border: 1px solid var(--border);
+  border: 1px solid var(--sep);
   border-radius: 8px;
   font-size: 13px;
   line-height: 1.45;
@@ -688,6 +689,14 @@ h1, h2, h3, h4 { margin: 0; font-family: var(--font-disp); letter-spacing: -0.02
 [data-theme="dark"] .log-body .lv.OK { color: #30D158; }
 [data-theme="dark"] .log-body .lv.WARN { color: #FF9F0A; }
 [data-theme="dark"] .log-body .lv.ERR { color: #FF453A; }
+/* Korean log level labels: 안내/완료/주의/오류 */
+.log-body .lv.안내 { background: var(--accent-soft); color: var(--accent); }
+.log-body .lv.완료 { background: rgba(48,209,88,.14); color: #248A3D; }
+.log-body .lv.주의 { background: rgba(255,159,10,.18); color: #C77A00; }
+.log-body .lv.오류 { background: rgba(255,69,58,.15); color: #D70015; }
+[data-theme="dark"] .log-body .lv.완료 { color: #30D158; }
+[data-theme="dark"] .log-body .lv.주의 { color: #FF9F0A; }
+[data-theme="dark"] .log-body .lv.오류 { color: #FF453A; }
 .log-body .msg { color: var(--fg); }
 
 /* ===== Class sheet ===== */
@@ -787,15 +796,8 @@ h1, h2, h3, h4 { margin: 0; font-family: var(--font-disp); letter-spacing: -0.02
 .stu-row:hover { border-color: var(--sep-strong); }
 .stu-row .n { color: var(--fg-3); font-size: 12.5px; font-variant-numeric: tabular-nums; }
 .stu-row .nm { font-size: 13.5px; font-weight: 500; }
-.stu-row .state {
-  width: 22px; height: 22px; border-radius: 50%;
-  display: grid; place-items: center; font-size: 11px; font-weight: 700;
-  background: var(--bg-2); color: var(--fg-3);
-}
-.stu-row[data-mark="present"] .state { background: var(--green); color: #fff; }
-.stu-row[data-mark="absent"]  .state { background: var(--red); color: #fff; }
+/* .stu-row .state removed — span was deleted; 3-button row uses StatusChip instead */
 .stu-row[data-mark="absent"]  { background: color-mix(in srgb, var(--red) 6%, var(--bg)); }
-.stu-row[data-mark="excused"] .state { background: var(--orange); color: #fff; }
 .stu-row[data-mark="excused"] { background: color-mix(in srgb, var(--orange) 6%, var(--bg)); }
 
 /* ===== Tweaks panel is styled by the starter component, but tweak colors follow accent */
