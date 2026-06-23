@@ -267,8 +267,10 @@ def open_neis_direct(driver, password):
         logger.error("인증서 로그인 버튼을 찾을 수 없습니다.")
         raise Exception("인증서 로그인 버튼 클릭 실패")
     
-    time.sleep(3)  # 비밀번호 입력창 로드 대기 (더 긴 시간)
-    
+    # 고정 대기 제거: 아래 WebDriverWait(element_to_be_clickable)가 비밀번호 입력창이
+    # 준비되는 즉시 반응하므로 별도 sleep은 순수 지연일 뿐이다.
+    _cert_clicked_at = time.time()
+
     # ➌ 비밀번호 입력창 찾기 및 입력 (기존 로직 재사용)
     logger.info("비밀번호 입력창 찾기 시작")
     password_input = None
@@ -285,7 +287,10 @@ def open_neis_direct(driver, password):
         password_input = WebDriverWait(driver, 15).until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, 'input.kc-pw-box, input[type="password"]'))
         )
-        logger.info("비밀번호 입력창 클릭 가능 상태 확인")
+        logger.info(
+            "비밀번호 입력창 클릭 가능 상태 확인 (인증서 클릭→입력창 %.2fs)",
+            time.time() - _cert_clicked_at,
+        )
     except TimeoutException:
         logger.warning("비밀번호 입력창 대기 타임아웃, 수동 검색 시도")
         for selector in password_selectors:
@@ -299,7 +304,7 @@ def open_neis_direct(driver, password):
     if password_input:
         try:
             # 먼저 일반적인 방법 시도
-            time.sleep(1)  # 추가 대기
+            time.sleep(0.2)  # 짧은 안정화 (element_to_be_clickable가 이미 클릭 가능 보장)
             password_input.click()
             password_input.clear()
             password_input.send_keys(password)
@@ -343,11 +348,10 @@ def open_neis_direct(driver, password):
             logger.error(f"확인 버튼 클릭 실패: {js_error}")
             raise Exception("확인 버튼 클릭 실패")
     
-    # ➎ 나이스 메인 페이지 로드 대기
-    time.sleep(3)
+    # ➎ 나이스 메인 페이지 로드 대기 — 고정 sleep(3) 대신 상단 네비게이션 바(실제 요소)를 기다린다
     try:
         WebDriverWait(driver, 15).until(
-            lambda d: '나이스' in d.title or 'neis' in d.current_url.lower()
+            EC.presence_of_element_located((By.CSS_SELECTOR, 'ul.cl-navigationbar-bar'))
         )
         logger.info(f"나이스 메인 페이지 로드 완료 - 제목: {driver.title}")
     except TimeoutException:
@@ -383,7 +387,7 @@ def neis_go_menu(driver, level1, level2, level3, level4=None):
                 if level1 in item_text:
                     print(f"[디버깅] 1차 메뉴 '{level1}' 발견! 클릭 시도...")
                     first_item.click()
-                    time.sleep(2)
+                    # 고정 sleep 제거: 바로 아래 2차 메뉴 WebDriverWait가 로드를 처리
                     print(f"[디버깅] 1차 메뉴 클릭 완료")
                     break
             except Exception as e:
@@ -426,7 +430,7 @@ def neis_go_menu(driver, level1, level2, level3, level4=None):
                             if level3 in third_text:
                                 print(f"[디버깅] 3차 메뉴 '{level3}' 발견! 클릭 시도...")
                                 third_item.click()
-                                time.sleep(2)
+                                time.sleep(0.4)  # 짧은 settle; 이후 4차 WebDriverWait 또는 호출측 사이드메뉴 대기가 실제 로드를 처리
                                 print(f"[디버깅] 3차 메뉴 클릭 완료")
                                 # level4가 있으면 4차 메뉴 탐색
                                 if level4:
@@ -445,7 +449,7 @@ def neis_go_menu(driver, level1, level2, level3, level4=None):
                                             if level4 in leaf_text:
                                                 print(f"[디버깅] 4차 메뉴 '{level4}' 발견! 클릭 시도...")
                                                 leaf.click()
-                                                time.sleep(2)
+                                                time.sleep(0.4)  # 짧은 settle; 호출측에서 후속 로드를 대기
                                                 print(f"[디버깅] 4차 메뉴 클릭 완료")
                                                 found4 = True
                                                 break
