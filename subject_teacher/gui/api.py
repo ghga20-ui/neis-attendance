@@ -471,6 +471,19 @@ class Api:
             logger.exception("get_drive_user failed")
             return _json_error(exc)
 
+    def reconnect(self) -> str:
+        """Run the interactive Google consent flow (opens a browser) and return the
+        refreshed account info. Used by the in-app '다시 연결' button so teachers
+        never need the terminal when the 7-day token expires."""
+        try:
+            from subject_teacher.auth.google_oauth import authorize_interactive
+
+            authorize_interactive()
+            return self.get_drive_user()
+        except Exception as exc:
+            logger.exception("reconnect failed")
+            return _json_error(exc)
+
     # ?? ?쒓컙??????????????????????????????????????????????????????????????????
 
     def get_timetable_tsv(self) -> str:

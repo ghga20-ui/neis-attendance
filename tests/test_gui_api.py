@@ -548,3 +548,18 @@ def test_student_file_import_parses_xlsx_first_sheet(tmp_path: Path):
 
     assert payload["classKey"] == "1-3"
     assert payload["students"] == [{"n": 7, "name": "박서연"}, {"n": 8, "name": "이준호"}]
+
+
+def test_reconnect_runs_interactive_auth_then_returns_account(monkeypatch):
+    called = {}
+    monkeypatch.setattr(
+        "subject_teacher.auth.google_oauth.authorize_interactive",
+        lambda: called.setdefault("auth", True),
+    )
+    a = gui_api.Api.__new__(gui_api.Api)
+    monkeypatch.setattr(a, "get_drive_user", lambda: json.dumps({"emailAddress": "x@y.com"}), raising=False)
+
+    payload = json.loads(a.reconnect())
+
+    assert called.get("auth") is True
+    assert payload["emailAddress"] == "x@y.com"
