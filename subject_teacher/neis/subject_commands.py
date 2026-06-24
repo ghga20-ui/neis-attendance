@@ -691,24 +691,27 @@ def ensure_excused_mode(driver: WebDriver, on: bool) -> None:
     """Turn the NEIS '출석인정' checkbox on/off so the next cell click writes Ø vs /.
 
     The control is a <div role="checkbox" aria-checked="..."> (eXBuilder6), NOT a
-    native <input>, so Selenium's is_selected() always reports False — which left
-    the box stuck ON (off-toggle never fired). Read the real state from
-    aria-checked, click only when it differs, and confirm the flip (re-finding the
-    element each time to survive grid re-renders).
+    native <input>, so Selenium's is_selected() always reports False. Read the real
+    state from aria-checked, click only when it differs, and confirm the flip
+    (re-finding the element each time to survive grid re-renders).
+
+    Turning it ON raises if it cannot be confirmed (we must be ON to mark Ø).
+    Turning it OFF is hygiene for the next slot and is best-effort — it must never
+    raise, or it would abort the slot before 저장(click_save) runs.
     """
 
     def find():
         elements = driver.find_elements(By.XPATH, SEL["excused_checkbox"])
         return elements[0] if elements else None
 
+    def is_on() -> bool:
+        element = find()
+        return element is not None and (element.get_attribute("aria-checked") or "").lower() == "true"
+
     if find() is None:
         if on:
             raise RuntimeError("'출석인정' 체크박스를 찾을 수 없습니다")
         return
-
-    def is_on() -> bool:
-        element = find()
-        return element is not None and (element.get_attribute("aria-checked") or "").lower() == "true"
 
     for _ in range(3):
         if is_on() == on:
@@ -717,14 +720,16 @@ def ensure_excused_mode(driver: WebDriver, on: bool) -> None:
         if element is None:
             break
         driver.execute_script("arguments[0].click();", element)
-        try:
-            _wait(driver, 3).until(lambda _d: is_on() == on)
-            return
-        except Exception:
-            continue
+        deadline = time.time() + 1.5
+        while time.time() < deadline:
+            if is_on() == on:
+                return
+            time.sleep(0.1)
 
-    if is_on() != on:
-        raise RuntimeError(f"'출석인정' 체크박스를 {'켜지' if on else '끄지'} 못했습니다")
+    # Could not confirm the desired state.
+    if on and is_on() != on:
+        raise RuntimeError("'출석인정' 체크박스를 켜지 못했습니다")
+    # on=False (or already settled): never raise — let 저장 proceed.
 
 
 def click_reset(driver: WebDriver) -> None:

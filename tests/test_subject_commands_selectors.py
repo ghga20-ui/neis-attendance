@@ -378,33 +378,68 @@ class _ExcusedDriver:
             self.cb._checked = not self.cb._checked  # NEIS toggles aria-checked
 
 
-def _patch_excused_wait(monkeypatch):
-    # The off-toggle was broken because is_selected() is always False on a <div>;
-    # ensure we now drive it off aria-checked. The fake _wait just resolves.
-    monkeypatch.setattr(subject_commands, "_wait", lambda *_a, **_k: _FakeWait(None))
+class _StuckExcusedCheckbox(_FakeExcusedCheckbox):
+    pass
 
 
-def test_ensure_excused_mode_turns_on_from_off(monkeypatch):
-    _patch_excused_wait(monkeypatch)
+class _StuckExcusedDriver(_ExcusedDriver):
+    """Clicking never flips aria-checked (simulates a flaky/stuck checkbox)."""
+    def execute_script(self, script, *args):
+        if "click" in script and args:
+            self.clicks += 1  # but do NOT toggle aria-checked
+
+
+class _FastClock:
+    def __init__(self):
+        self._t = 0.0
+
+    def time(self):
+        self._t += 1.0
+        return self._t
+
+    def sleep(self, _seconds):
+        pass
+
+
+def _patch_fast_clock(monkeypatch):
+    monkeypatch.setattr(subject_commands, "time", _FastClock())
+
+
+def test_ensure_excused_mode_turns_on_from_off():
     driver = _ExcusedDriver(checked=False)
     subject_commands.ensure_excused_mode(driver, True)
     assert driver.clicks == 1
     assert driver.cb._checked is True
 
 
-def test_ensure_excused_mode_turns_off_from_on(monkeypatch):
-    _patch_excused_wait(monkeypatch)
+def test_ensure_excused_mode_turns_off_from_on():
     driver = _ExcusedDriver(checked=True)
     subject_commands.ensure_excused_mode(driver, False)
     assert driver.clicks == 1          # previously 0 — the off-toggle bug
     assert driver.cb._checked is False
 
 
-def test_ensure_excused_mode_is_noop_when_already_in_state(monkeypatch):
-    _patch_excused_wait(monkeypatch)
+def test_ensure_excused_mode_is_noop_when_already_in_state():
     on_driver = _ExcusedDriver(checked=True)
     subject_commands.ensure_excused_mode(on_driver, True)
     assert on_driver.clicks == 0
     off_driver = _ExcusedDriver(checked=False)
     subject_commands.ensure_excused_mode(off_driver, False)
     assert off_driver.clicks == 0
+
+
+def test_ensure_excused_mode_off_never_raises_even_if_stuck(monkeypatch):
+    # Turning OFF must be best-effort — never abort the slot before 저장 runs.
+    _patch_fast_clock(monkeypatch)
+    driver = _StuckExcusedDriver(checked=True)
+    subject_commands.ensure_excused_mode(driver, False)  # must not raise
+    assert driver.clicks >= 1
+
+
+def test_ensure_excused_mode_on_raises_if_cannot_turn_on(monkeypatch):
+    # We must be ON to mark Ø, so a failure here should surface.
+    _patch_fast_clock(monkeypatch)
+    driver = _StuckExcusedDriver(checked=False)
+    import pytest
+    with pytest.raises(RuntimeError):
+        subject_commands.ensure_excused_mode(driver, True)
