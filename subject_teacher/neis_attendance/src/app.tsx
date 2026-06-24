@@ -3,6 +3,7 @@ import { Icon } from "./components";
 import { LogDock } from "./log-panel";
 import { RunView } from "./run-view";
 import { BasicsView, TimetableView, RosterView, PlaceholderView, ConnectionView } from "./setup-view";
+import { OnboardingGuide } from "./onboarding";
 import { TweaksPanel, useTweaks, TweakSection, TweakRadio, TweakToggle, TweakSlider, TweakColor, TweakSelect } from "./tweaks-panel";
 import { TODAY_SLOTS, TIMETABLE, ROSTERS } from "./data";
 import {
@@ -49,6 +50,13 @@ function App() {
   const [running, setRunning] = useState<any>(false);
   const [progress, setProgress] = useState<any>({ done: 0, total: 0, current: "", state: "idle" });
   const [logOpen, setLogOpen] = useState<any>(false);
+  const [showOnboarding, setShowOnboarding] = useState<any>(() => {
+    try { return localStorage.getItem("onboardingSeen") !== "1"; } catch { return true; }
+  });
+  const closeOnboarding = () => {
+    try { localStorage.setItem("onboardingSeen", "1"); } catch {}
+    setShowOnboarding(false);
+  };
   const [logLines, setLogLines] = useState<any>([
     { ts: "09:02:14", lv: "안내", msg: "앱 실행 — subject_teacher v0.4.1" },
     { ts: "09:02:14", lv: "완료", msg: "Google Drive 연결 · 3개 파일 감지" },
@@ -483,6 +491,7 @@ function App() {
           </div>
         ))}
 
+        <button className="sb-loglink" onClick={() => setShowOnboarding(true)}>시작 가이드</button>
         <button className="sb-loglink" onClick={() => setLogOpen(o => !o)}>진행 기록</button>
         <button className="sb-loglink" onClick={loadSetupData}>설정 다시 불러오기</button>
 
@@ -506,6 +515,19 @@ function App() {
         {page === "connect"   && <ConnectionView driveUser={driveUser} reconnect={reconnect} reconnecting={reconnecting} loadSetupData={loadSetupData}/>}
       </main>
 
+      {showOnboarding && (
+        <OnboardingGuide
+          steps={[
+            { key: "connect", title: "구글 계정 연결", desc: "출결을 내 Google Drive에 저장합니다.", done: !!driveUser },
+            { key: "basics", title: "학교 찾기", desc: "기본 정보에서 학교를 찾아 확정하세요.", done: !!(settings && settings.schoolCode) },
+            { key: "timetable", title: "시간표 준비", desc: "NEIS 키 입력 + 담당 수업 추가.", done: !!neisApiKey && (((settings && settings.assignedLessons) || []).length > 0) },
+            { key: "roster", title: "학생 명부 채우기", desc: "학급에 학생을 입력하세요.", done: Object.values(rosters || {}).some((r: any) => (r || []).length > 0) },
+            { key: "run", title: "오늘 출결 실행", desc: "날짜 선택 후 NEIS에 반영합니다.", done: false },
+          ]}
+          onGo={(key) => { setPage(key); closeOnboarding(); }}
+          onClose={closeOnboarding}
+        />
+      )}
       {toast && (
         <div className={`app-toast ${toast.lv === "오류" ? "err" : "ok"}`} role="status">{toast.msg}</div>
       )}
