@@ -67,22 +67,11 @@ describe("mobile app", () => {
 
     await user.click(screen.getByRole("button", { name: "설정" }));
 
-    expect(screen.getByRole("heading", { name: "설정 확인" })).toBeInTheDocument();
-    expect(screen.getByText("시간표와 학생 명부는 데스크톱에서 편집합니다.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "설정" })).toBeInTheDocument();
+    expect(screen.getByText("편집은 PC(데스크톱 앱)에서 합니다.")).toBeInTheDocument();
     expect(screen.getByText("3교시 · 2-1 문학")).toBeInTheDocument();
     expect(screen.getByText("2-1 · 5명")).toBeInTheDocument();
-  });
-
-  it("shows sync, offline retry, reminder, and NEIS read-only states", async () => {
-    const user = userEvent.setup();
-    render(<App initialDate="2026-05-04" />);
-
-    await user.click(screen.getByRole("button", { name: "동기화" }));
-
-    expect(screen.getByRole("heading", { name: "동기화" })).toBeInTheDocument();
-    expect(screen.getByText("오프라인 저장 후 연결되면 자동 재동기화합니다.")).toBeInTheDocument();
-    expect(screen.getByText("17:00 미체크 알림")).toBeInTheDocument();
-    expect(screen.getByText("NEIS 반영 여부는 PC 실행 결과를 읽기 전용으로 표시합니다.")).toBeInTheDocument();
+    expect(screen.getByText("계정")).toBeInTheDocument();
   });
 
   it("loads another month's attendance when navigating across months", async () => {
@@ -141,12 +130,11 @@ describe("mobile app", () => {
     await user.click(screen.getByRole("button", { name: /^3번 / }));
     await user.click(screen.getByRole("button", { name: "저장" }));
 
-    await user.click(screen.getByRole("button", { name: "동기화" }));
-    // Disambiguate from the global failure banner's "다시 시도" button.
-    const retry = await screen.findByRole("button", { name: "실패한 1건 다시 시도" });
+    // The lessons-page failure banner offers the retry (the 동기화 tab is gone).
+    const retry = await screen.findByRole("button", { name: "다시 시도" });
     await user.click(retry);
 
-    await waitFor(() => expect(screen.getByText("완료 1건")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Drive 완료")).toBeInTheDocument());
     expect(onSaveSlot).toHaveBeenCalledTimes(2);
   });
 });

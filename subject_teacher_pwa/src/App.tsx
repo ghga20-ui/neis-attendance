@@ -19,7 +19,6 @@ import {
   pendingItems,
   type SaveQueueItem,
 } from "./lib/offlineQueue";
-import { buildUncheckedReminderMessage, deriveDriveSyncLabel } from "./lib/syncAndReminder";
 import type { SlotAttendance, StudentEntry, TimetableSlot } from "./lib/schemas";
 import { sampleRosters, sampleSlots } from "./sampleData";
 
@@ -47,6 +46,8 @@ interface AppProps {
   onSaveSlot?: SaveSlotHandler;
   /** Loads another month's attendance when the user navigates across months. */
   onLoadMonth?: (month: string) => Promise<AttendanceByDate>;
+  /** Signs the teacher out (revoke token) — wired from Root. */
+  onSignOut?: () => void;
 }
 
 function toLocalIsoDate(date = new Date()): string {
@@ -103,8 +104,9 @@ export default function App({
   initialMonth,
   onSaveSlot,
   onLoadMonth,
+  onSignOut,
 }: AppProps = {}) {
-  const [page, setPage] = useState<"lessons" | "sync" | "settings">("lessons");
+  const [page, setPage] = useState<"lessons" | "settings">("lessons");
   const [privacyAcked, setPrivacyAcked] = useState<boolean>(
     () => localStorage.getItem(PRIVACY_ACK_KEY) === "1",
   );
@@ -143,7 +145,12 @@ export default function App({
     const unchecked = Math.max(visibleSlots.length - checked, 0);
     return { checked, failed, pending, unchecked };
   }, [attendanceForDate, queue, visibleSlots]);
-  const driveSyncLabel = deriveDriveSyncLabel({ isOnline, queue });
+  const lastSyncedAt = useMemo(() => {
+    const times = queue
+      .filter((item) => item.status === "synced" && item.syncedAt)
+      .map((item) => item.syncedAt as string);
+    return times.length ? times.sort().at(-1) ?? null : null;
+  }, [queue]);
 
   const openLesson = (slot: TimetableSlot) => {
     const roster = rosters[classKey(slot)] ?? [];
@@ -407,41 +414,20 @@ export default function App({
         </main>
       )}
 
-      {page === "sync" && (
+      {page === "settings" && (
         <main className="stack-page">
-          <h2>동기화</h2>
+          <h2>설정</h2>
           <section className="info-card">
-            <strong>Drive 상태</strong>
-            <p>오프라인 저장 후 연결되면 자동 재동기화합니다.</p>
-            <div className="status-grid">
-              <span>{driveSyncLabel} {counts.pending}건</span>
-              <span>완료 {queue.filter((item) => item.status === "synced").length}건</span>
-              <span>실패 {counts.failed}건</span>
-            </div>
-            {onSaveSlot && counts.failed > 0 && (
-              <button className="secondary" type="button" onClick={retryFailed}>
-                실패한 {counts.failed}건 다시 시도
-              </button>
+            <strong>계정</strong>
+            <p>Google 계정에 연결되어 출결이 내 Drive에 저장됩니다.</p>
+            {lastSyncedAt && <p>마지막 동기화: {formatSavedAt(lastSyncedAt)}</p>}
+            {onSignOut && (
+              <button className="secondary danger" type="button" onClick={onSignOut}>로그아웃 (연결 해제)</button>
             )}
           </section>
           <section className="info-card">
-            <strong>17:00 미체크 알림</strong>
-            <p>일정 시각 이후 미체크 수업이 남아 있으면 알림을 보냅니다.</p>
-            <p>{buildUncheckedReminderMessage(counts.unchecked)}</p>
-          </section>
-          <section className="info-card">
-            <strong>NEIS 반영</strong>
-            <p>NEIS 반영 여부는 PC 실행 결과를 읽기 전용으로 표시합니다.</p>
-          </section>
-        </main>
-      )}
-
-      {page === "settings" && (
-        <main className="stack-page">
-          <h2>설정 확인</h2>
-          <p className="page-note">시간표와 학생 명부는 데스크톱에서 편집합니다.</p>
-          <section className="info-card">
             <strong>시간표</strong>
+            <p className="page-note">편집은 PC(데스크톱 앱)에서 합니다.</p>
             {slots.map((slot) => (
               <p key={slot.id}>{slot.period}교시 · {slot.grade}-{slot.classNo} {slot.subjectName}</p>
             ))}
@@ -452,12 +438,15 @@ export default function App({
               <p key={key}>{key} · {roster.length}명</p>
             ))}
           </section>
+          <section className="info-card">
+            <strong>개인정보</strong>
+            <p>학생 이름은 저장하지 않습니다. 학번·출결만 본인 Google Drive에 저장되며 외부 서버로 전송되지 않습니다.</p>
+          </section>
         </main>
       )}
 
       <nav className="bottom-nav" aria-label="모바일 메뉴">
         <button className={page === "lessons" ? "on" : ""} type="button" onClick={() => setPage("lessons")}>수업</button>
-        <button className={page === "sync" ? "on" : ""} type="button" onClick={() => setPage("sync")}>동기화</button>
         <button className={page === "settings" ? "on" : ""} type="button" onClick={() => setPage("settings")}>설정</button>
       </nav>
 
@@ -493,13 +482,6 @@ export default function App({
           </div>
         </div>
       )}
-
-      <footer className="privacy-footer">
-        <details>
-          <summary>개인정보 처리방침 요약</summary>
-          <p>이 앱은 학생 학번과 출결 정보만 Google Drive에 저장합니다. 학생 이름은 이 기기에만 저장되며 외부 서버로 전송되지 않습니다. 출결 데이터는 담당 교사의 Google Drive에만 기록됩니다. 자세한 내용은 배포 패키지의 <code>docs/legal/privacy-policy.md</code>를 확인하세요.</p>
-        </details>
-      </footer>
 
       {selectedSlot && (
         <div
