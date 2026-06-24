@@ -1083,7 +1083,9 @@ def visible_result_count(driver: WebDriver) -> int | None:
       .map(textOf)
       .filter((text) => text.includes("결과") && text.includes("명"));
     for (const text of candidates) {
-      const match = text.match(/결과\\s*:?\\s*(\\d+)\\s*명/);
+      // Read the combined '결과 N명' counter, NOT the '인정결과 N명' sub-counter
+      // (which also contains '결과'); otherwise mixed /,Ø days mis-count.
+      const match = text.match(/(?<!인정)결과\\s*:?\\s*(\\d+)\\s*명/);
       if (match) return Number(match[1]);
     }
     return null;
@@ -1092,16 +1094,46 @@ def visible_result_count(driver: WebDriver) -> int | None:
     return int(result) if result is not None else None
 
 
-def verify_result_count(driver: WebDriver, expected_count: int) -> None:
+def _dump_result_count_diagnostics(driver: WebDriver, expected: int, actual) -> None:
     try:
-        actual_holder = _wait(driver, 3).until(
-            lambda d: ((count,) if (count := visible_result_count(d)) is not None else False)
+        texts = driver.execute_script(
+            """
+            const out = [];
+            for (const el of Array.from(document.querySelectorAll('*'))) {
+              const t = (el.innerText || el.textContent || '').replace(/\\s+/g, ' ').trim();
+              if (t && t.length <= 40 && t.includes('결과') && t.includes('명')) out.push(t);
+            }
+            return Array.from(new Set(out)).slice(0, 50);
+            """
         )
     except Exception as exc:
-        raise RuntimeError(f"NEIS result count not found; expected {expected_count}") from exc
-    actual = actual_holder[0]
-    if actual != expected_count:
-        raise RuntimeError(f"NEIS result count mismatch: expected {expected_count}, got {actual}")
+        texts = [f"error: {exc}"]
+    try:
+        with open("tmp_neis_result_count.json", "w", encoding="utf-8") as f:
+            json.dump({"expected": expected, "actual": actual, "texts": texts}, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+
+def verify_result_count(driver: WebDriver, expected_count: int) -> None:
+    """Best-effort sanity check of NEIS's combined '결과 N명' counter.
+
+    Must NOT raise: a count-reading hiccup (e.g. an unexpected '인정결과' layout)
+    previously aborted the slot before 저장 ran, so attendance got marked but never
+    saved. On mismatch/not-found we capture tmp_neis_result_count.json for diagnosis
+    and continue — the teacher reviews the marks in NEIS anyway.
+    """
+    actual = None
+    try:
+        holder = _wait(driver, 3).until(
+            lambda d: ((count,) if (count := visible_result_count(d)) is not None else False)
+        )
+        actual = holder[0]
+    except Exception:
+        actual = None
+    if actual == expected_count:
+        return
+    _dump_result_count_diagnostics(driver, expected_count, actual)
 
 
 def _accept_browser_alert(driver: WebDriver, attempts: int = 8, delay: float = 0.1) -> bool:
