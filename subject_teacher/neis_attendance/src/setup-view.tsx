@@ -146,6 +146,10 @@ export const TimetableView = ({ rows, setRows, settings, setSettings, neisApiKey
   const [selected, setSelected] = useState<any>(new Set());
   const [day, setDay] = useState<any>("전체");
   const [subjectLookup, setSubjectLookup] = useState<any>({ index: null, loading: false, error: "", lessons: [] });
+  const [advancedRows, setAdvancedRows] = useState<any>(new Set());
+  const toggleAdvanced = (index) => {
+    setAdvancedRows(prev => { const n = new Set(prev); n.has(index) ? n.delete(index) : n.add(index); return n; });
+  };
 
   const filtered = rows.map((r, i) => ({...r, _i: i})).filter(r => day === "전체" || r.day === day);
   const assignedLessons = settings?.assignedLessons || [];
@@ -287,21 +291,32 @@ export const TimetableView = ({ rows, setRows, settings, setSettings, neisApiKey
             <div className="assigned-list">
               {assignedLessons.length === 0 ? (
                 <EmptyState icon="board" title="담당 수업이 없어요" body="학년, 반, 과목을 추가하면 선택 날짜 기준으로 NEIS 시간표에서 자동 조회합니다."/>
-              ) : assignedLessons.map((lesson, index) => (
+              ) : assignedLessons.map((lesson, index) => {
+                const advOpen = advancedRows.has(index)
+                  || Boolean(String(lesson.neisSubjectLabel || "").trim())
+                  || Boolean((lesson.subjectAliases || []).length);
+                return (
                 <React.Fragment key={index}>
-                <div className="assigned-row">
+                <div className="assigned-row-basic">
                   <select className="select" value={lesson.grade} onChange={e => updateAssignedLesson(index, { grade: +e.target.value })}>
                     {[1,2,3].map(n => <option key={n} value={n}>{n}학년</option>)}
                   </select>
                   <input className="input" value={lesson.classNo} onChange={e => updateAssignedLesson(index, { classNo: e.target.value })} placeholder="반"/>
-                  <input className="input" value={lesson.subjectName} onChange={e => updateAssignedLesson(index, { subjectName: e.target.value })} placeholder="내 과목명 · 예: 수학1"/>
-                  <input className="input" value={lesson.neisSubjectLabel} onChange={e => updateAssignedLesson(index, { neisSubjectLabel: e.target.value })} placeholder="NEIS 표시명 · 예: 수학Ⅰ"/>
-                  <input className="input" value={(lesson.subjectAliases || []).join(", ")} onChange={e => updateAssignedLesson(index, { subjectAliases: e.target.value.split(",").map(v => v.trim()).filter(Boolean) })} placeholder="별칭 · 쉼표 구분"/>
-                  <button className="tb-btn assigned-check-btn" onClick={() => checkAssignedSubject(index)} disabled={subjectLookup.loading && subjectLookup.index === index}>
-                    <Icon name={subjectLookup.loading && subjectLookup.index === index ? "clock" : "search"} size={14}/> 유사 표시명 찾기
+                  <input className="input" value={lesson.subjectName} onChange={e => updateAssignedLesson(index, { subjectName: e.target.value })} placeholder="과목명 · 예: 수학1"/>
+                  <button className="tb-btn ghost assigned-adv-toggle" onClick={() => toggleAdvanced(index)} title="과목명이 NEIS 표기와 다를 때만 사용">
+                    {advOpen ? "표시명 닫기" : "표시명 다름?"}
                   </button>
                   <button className="tb-iconbtn" onClick={() => removeAssignedLesson(index)} title="삭제"><Icon name="trash" size={15}/></button>
                 </div>
+                {advOpen && (
+                  <div className="assigned-row-adv">
+                    <input className="input" value={lesson.neisSubjectLabel} onChange={e => updateAssignedLesson(index, { neisSubjectLabel: e.target.value })} placeholder="NEIS 표시명 · 예: 수학Ⅰ"/>
+                    <input className="input" value={(lesson.subjectAliases || []).join(", ")} onChange={e => updateAssignedLesson(index, { subjectAliases: e.target.value.split(",").map(v => v.trim()).filter(Boolean) })} placeholder="별칭 · 쉼표 구분"/>
+                    <button className="tb-btn assigned-check-btn" onClick={() => checkAssignedSubject(index)} disabled={subjectLookup.loading && subjectLookup.index === index}>
+                      <Icon name={subjectLookup.loading && subjectLookup.index === index ? "clock" : "search"} size={14}/> 유사 표시명 찾기
+                    </button>
+                  </div>
+                )}
                 {subjectLookup.index === index && (
                   <div className="assigned-lookup-panel">
                     {subjectLookup.loading ? (
@@ -325,7 +340,8 @@ export const TimetableView = ({ rows, setRows, settings, setSettings, neisApiKey
                   </div>
                 )}
                 </React.Fragment>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
