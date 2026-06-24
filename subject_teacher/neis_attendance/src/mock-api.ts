@@ -42,6 +42,7 @@ export function createMockApi(): DesktopApi {
     save_students_tsv: () => ok({ ok: true }),
     get_today_slots: () => ok(TODAY_SLOTS),
     save_slot_attendance: () => ok({ ok: true, checkedAt: "2026-04-20T09:00:00+09:00" }),
+    delete_slot_attendance: () => ok({ ok: true }),
     get_drive_user: () => ok({ displayName: "Demo", emailAddress: "demo@example.com" }),
     get_neis_api_key: () => Promise.resolve(""),
     save_neis_api_key: () => ok({ ok: true }),

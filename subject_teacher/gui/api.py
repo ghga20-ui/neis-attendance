@@ -71,6 +71,7 @@ SERIALIZED_API_METHODS = {
     "get_mobile_attendance_month",
     "save_mobile_slot_attendance",
     "save_slot_attendance",
+    "delete_slot_attendance",
 }
 
 
@@ -209,6 +210,20 @@ def _save_slot_attendance_record(
         monthly.records[date_str] = day_records
         store.save_monthly(monthly)
         return monthly
+
+
+def _delete_slot_attendance_record(date_str: str, slot_id: str) -> None:
+    with API_IO_LOCK:
+        store = build_store()
+        month = date_str[:7]
+        monthly = store.load_monthly(month)
+        if monthly is None:
+            return
+        day_records = dict(monthly.records.get(date_str, {}))
+        if slot_id in day_records:
+            del day_records[slot_id]
+            monthly.records[date_str] = day_records
+            store.save_monthly(monthly)
 
 
 def _assigned_value(lesson: object, key: str, default: object = "") -> object:
@@ -819,6 +834,15 @@ class Api:
             )
         except Exception as exc:
             logger.exception("save_mobile_slot_attendance failed")
+            return _json_error(exc)
+
+    def delete_slot_attendance(self, date_str: str, slot_id: str) -> str:
+        try:
+            _delete_slot_attendance_record(date_str, slot_id)
+            self._clear_slot_cache(date_str)
+            return json.dumps({"ok": True})
+        except Exception as exc:
+            logger.exception("delete_slot_attendance failed")
             return _json_error(exc)
 
     def save_slot_attendance(self, date_str: str, slot_id: str, marks_payload: str) -> str:

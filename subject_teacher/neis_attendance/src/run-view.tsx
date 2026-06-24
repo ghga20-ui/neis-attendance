@@ -201,27 +201,48 @@ const ClassSheet = ({ slot, rosters, onClose, onSaveMarks, currentMarks, appendL
 };
 
 export const RunView = ({ date, setDate, password, setPassword, savePassword, closeAfter, setCloseAfter,
-                   slots, setSlots, rosters, running, progress, runLog, startRun, saveSlotAttendance, appendLog, refreshSlots, publishNeisTimetableForMobile, slotLoading, slotError }) => {
+                   slots, setSlots, rosters, running, progress, runLog, startRun, saveSlotAttendance, deleteSlotAttendance, appendLog, refreshSlots, publishNeisTimetableForMobile, slotLoading, slotError }) => {
   const [openSlot, setOpenSlot] = useState<any>(null);
   const [marksById, setMarksById] = useState<any>({});
   const [boganOpen, setBoganOpen] = useState<any>(false);
   const [bgSaving, setBgSaving] = useState<any>(false);
+  const [editingId, setEditingId] = useState<any>(null);
   const [bg, setBg] = useState<any>({ grade: 2, classNo: "", period: 1, subject: "", absent: "", excused: "" });
 
   const parseNums = (text) => String(text || "").split(/[\s,]+/).map(x => x.trim()).filter(Boolean)
     .map(Number).filter(n => Number.isInteger(n) && n > 0);
+  const marksToNums = (marks, type) => Object.entries(marks || {}).filter(([, m]) => m === type).map(([n]) => n).join(", ");
 
-  const addBogang = () => {
+  const resetBg = () => setBg({ grade: 2, classNo: "", period: 1, subject: "", absent: "", excused: "" });
+  const closeBogan = () => { setBoganOpen(false); setEditingId(null); resetBg(); };
+  const openBoganAdd = () => { setEditingId(null); resetBg(); setBoganOpen(true); };
+  const openBoganEdit = (slot) => {
+    setBg({
+      grade: slot.grade || 2,
+      classNo: String(slot.classNo || ""),
+      period: slot.period || 1,
+      subject: slot.subject || "",
+      absent: marksToNums(slot.marks, "absent"),
+      excused: marksToNums(slot.marks, "excused"),
+    });
+    setEditingId(slot.id);
+    setBoganOpen(true);
+  };
+
+  const saveBogan = () => {
     const classNo = String(bg.classNo).trim();
     if (!classNo) { appendLog && appendLog("오류", "반을 입력해 주세요"); return; }
     const subj = String(bg.subject || "").replace(/[\s-]/g, "") || "subject";
     const id = `neis-${bg.grade}-${classNo}-${bg.period}-${subj}`;
+    const prevId = editingId;
     const marks: any = {};
     parseNums(bg.absent).forEach(n => { marks[n] = "absent"; });
     parseNums(bg.excused).forEach(n => { marks[n] = "excused"; });
     const absCount = Object.keys(marks).length;
     setBgSaving(true);
-    Promise.resolve(saveSlotAttendance(id, marks)).then((saved) => {
+    const cleanup = (prevId && prevId !== id && deleteSlotAttendance)
+      ? Promise.resolve(deleteSlotAttendance(prevId)) : Promise.resolve();
+    cleanup.then(() => saveSlotAttendance(id, marks)).then((saved) => {
       const checkedAt = saved?.checkedAt || new Date().toISOString();
       const newSlot = {
         id, period: bg.period, grade: bg.grade, classNo, subject: bg.subject || "",
@@ -229,11 +250,22 @@ export const RunView = ({ date, setDate, password, setPassword, savePassword, cl
         synced: false, closed: false, checkedAt, marks,
         note: absCount ? `결과·인정결과 ${absCount}명` : "전원 출석", adhoc: true,
       };
-      setSlots(prev => [...prev.filter(s => s.id !== id), newSlot].sort((a, b) => (a.period || 0) - (b.period || 0)));
-      setBoganOpen(false);
-      setBg({ grade: 2, classNo: "", period: 1, subject: "", absent: "", excused: "" });
-      appendLog && appendLog("완료", `보강 추가: ${bg.grade}-${classNo} ${bg.period}교시`);
-    }).catch(err => appendLog && appendLog("오류", `보강 추가 실패: ${err?.message || err}`))
+      setSlots(prev => [...prev.filter(s => s.id !== id && s.id !== prevId), newSlot].sort((a, b) => (a.period || 0) - (b.period || 0)));
+      appendLog && appendLog("완료", `${prevId ? "보강 수정" : "보강 추가"}: ${bg.grade}-${classNo} ${bg.period}교시`);
+      closeBogan();
+    }).catch(err => appendLog && appendLog("오류", `보강 저장 실패: ${err?.message || err}`))
+      .finally(() => setBgSaving(false));
+  };
+
+  const deleteBogan = () => {
+    if (!editingId) return;
+    const id = editingId;
+    setBgSaving(true);
+    Promise.resolve(deleteSlotAttendance ? deleteSlotAttendance(id) : null).then(() => {
+      setSlots(prev => prev.filter(s => s.id !== id));
+      appendLog && appendLog("완료", "보강 삭제됨");
+      closeBogan();
+    }).catch(err => appendLog && appendLog("오류", `보강 삭제 실패: ${err?.message || err}`))
       .finally(() => setBgSaving(false));
   };
 
@@ -259,7 +291,7 @@ export const RunView = ({ date, setDate, password, setPassword, savePassword, cl
         <span className="title">오늘 출결</span>
         <span className="sub">· 선택한 날짜의 수업을 확인하고 NEIS에 반영합니다</span>
         <div className="topbar-actions">
-          <button className="tb-btn" onClick={() => setBoganOpen(true)}>
+          <button className="tb-btn" onClick={openBoganAdd}>
             <Icon name="plus" size={14}/> 보강 추가
           </button>
           <button className="tb-btn" onClick={() => {
@@ -366,7 +398,7 @@ export const RunView = ({ date, setDate, password, setPassword, savePassword, cl
                 body="시간표 탭의 담당 수업, 과목명, 학년·반 또는 선택 날짜를 확인하세요." />
             ) : slots.map(s => (
               <div key={s.id} className="list-row" style={{gridTemplateColumns:"80px 1.6fr 80px 80px 130px 1fr auto"}}
-                   onClick={() => setOpenSlot(s)}>
+                   onClick={() => s.adhoc ? openBoganEdit(s) : setOpenSlot(s)}>
                 <div className="period">
                   <span className="p-num">{s.period}</span>
                 </div>
@@ -411,10 +443,10 @@ export const RunView = ({ date, setDate, password, setPassword, savePassword, cl
           <div className="ob-card">
             <div className="ob-head">
               <div className="ob-head-text">
-                <h2>보강 수업 추가</h2>
+                <h2>{editingId ? "보강 수업 수정" : "보강 수업 추가"}</h2>
                 <div className="ob-sub">오늘({date})만 처리할 임시 수업입니다. 담당 수업·시간표는 바뀌지 않아요. NEIS에 보강이 등록돼 있어야 반영됩니다.</div>
               </div>
-              <button className="ob-x" onClick={() => setBoganOpen(false)} aria-label="닫기"><Icon name="x" size={18}/></button>
+              <button className="ob-x" onClick={closeBogan} aria-label="닫기"><Icon name="x" size={18}/></button>
             </div>
             <div className="bogang-form">
               <div className="field">
@@ -447,9 +479,14 @@ export const RunView = ({ date, setDate, password, setPassword, savePassword, cl
               </div>
             </div>
             <div className="ob-actions">
-              <button className="tb-btn" onClick={() => setBoganOpen(false)}>취소</button>
-              <button className="tb-btn primary" onClick={addBogang} disabled={!String(bg.classNo).trim() || bgSaving}>
-                {bgSaving ? "추가 중…" : "추가"}
+              {editingId && (
+                <button className="tb-btn bogan-delete" onClick={deleteBogan} disabled={bgSaving} style={{marginRight:"auto"}}>
+                  <Icon name="trash" size={14}/> 삭제
+                </button>
+              )}
+              <button className="tb-btn" onClick={closeBogan}>취소</button>
+              <button className="tb-btn primary" onClick={saveBogan} disabled={!String(bg.classNo).trim() || bgSaving}>
+                {bgSaving ? "저장 중…" : (editingId ? "저장" : "추가")}
               </button>
             </div>
           </div>

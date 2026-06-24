@@ -199,6 +199,7 @@ h1, h2, h3, h4 { margin: 0; font-family: var(--font-disp); letter-spacing: -0.01
   background: rgba(10,132,255,.14); color: #0A5BC4; font-size: 11px; font-weight: 800;
   vertical-align: middle;
 }
+.bogan-delete { color: #C42017; }
 [data-sidebar="collapsed"] .sb-name-wrap { display: none; }
 [data-sidebar="collapsed"] .sb-collapse { margin-left: 0; }
 

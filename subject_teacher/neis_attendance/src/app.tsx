@@ -355,6 +355,15 @@ function App() {
       });
   };
 
+  const deleteSlotAttendance = (slotId) => {
+    if (!(window.__isPywebview && window.__isPywebview())) {
+      appendLog("완료", "보강 삭제 (미리보기)");
+      return Promise.resolve({ ok: true });
+    }
+    return window.pywebview!.api.delete_slot_attendance(toIsoDate(date), slotId)
+      .then(raw => parseJsonResult(raw));
+  };
+
   // Keep the latest refreshSlots/date for the once-registered bridge callback.
   const refreshSlotsRef = React.useRef(refreshSlots);
   refreshSlotsRef.current = refreshSlots;
@@ -519,7 +528,7 @@ function App() {
       </aside>
 
       <main className="main">
-        {page === "run"       && <RunView {...{date,setDate,password,setPassword,savePassword,closeAfter,setCloseAfter,slots,setSlots,rosters,running,progress,runLog:logLines,startRun,saveSlotAttendance,appendLog,refreshSlots,publishNeisTimetableForMobile,slotLoading,slotError}}/>}
+        {page === "run"       && <RunView {...{date,setDate,password,setPassword,savePassword,closeAfter,setCloseAfter,slots,setSlots,rosters,running,progress,runLog:logLines,startRun,saveSlotAttendance,deleteSlotAttendance,appendLog,refreshSlots,publishNeisTimetableForMobile,slotLoading,slotError}}/>}
         {page === "basics"    && <BasicsView settings={settings} setSettings={setSettings} driveUser={driveUser} appendLog={appendLog} loadSetupData={loadSetupData} saveSettings={saveSettings} searchSchools={searchSchools}/>}
         {page === "timetable" && <TimetableView rows={timetable} setRows={setTimetable} settings={settings} setSettings={setSettings} neisApiKey={neisApiKey} setNeisApiKey={setNeisApiKey} saveNeisApiKey={saveNeisApiKey} appendLog={appendLog} loadSetupData={loadSetupData} saveSettings={saveSettings} saveTimetable={saveTimetable} previewNeisPublicTimetable={previewNeisPublicTimetable} findNeisSubjectCandidates={findNeisSubjectCandidates} publishNeisTimetableForMobile={publishNeisTimetableForMobile}/>}
         {page === "roster"    && <RosterView rosters={rosters} setRosters={setRosters} appendLog={appendLog} loadSetupData={loadSetupData} saveRosters={saveRosters} importRosterFile={importRosterFile}/>}

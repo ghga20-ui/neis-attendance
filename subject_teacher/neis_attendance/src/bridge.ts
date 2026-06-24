@@ -9,6 +9,7 @@ export interface DesktopApi {
   save_students_tsv(tsv: string): Promise<string>;
   get_today_slots(dateStr: string): Promise<string>;
   save_slot_attendance(dateStr: string, slotId: string, marksJson: string): Promise<string>;
+  delete_slot_attendance(dateStr: string, slotId: string): Promise<string>;
   get_drive_user(): Promise<string>;
   get_neis_api_key(): Promise<string>;
   save_neis_api_key(apiKey: string): Promise<string>;
