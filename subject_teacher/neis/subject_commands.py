@@ -44,7 +44,7 @@ SEL: dict[str, str] = {
     "radio_subject_mode": "//div[@data-role='radio' and @data-value='2']",
     "input_date": "//input[contains(@aria-label, '\uc77c\uc790')]",
     "left_panel_period_row": "//*[contains(@aria-label, '\uad50\uc2dc {period}')]",
-    "excused_checkbox": "//div[@data-role='checkbox' and @role='checkbox']",
+    "excused_checkbox": "//div[@role='checkbox' and contains(@aria-label, '출석인정')]",
     "student_row_by_number": "//table[contains(@class,'attend-grid')]//tr[td[normalize-space()='{number}']]",
     "cell_status_in_row": ".//td[contains(@class,'status')]//input",
     "cell_note_in_row": ".//td[contains(@class,'note')]//input",
@@ -688,16 +688,43 @@ def select_period(
 
 
 def ensure_excused_mode(driver: WebDriver, on: bool) -> None:
-    checkboxes = driver.find_elements(By.XPATH, SEL["excused_checkbox"])
-    if not checkboxes:
+    """Turn the NEIS '출석인정' checkbox on/off so the next cell click writes Ø vs /.
+
+    The control is a <div role="checkbox" aria-checked="..."> (eXBuilder6), NOT a
+    native <input>, so Selenium's is_selected() always reports False — which left
+    the box stuck ON (off-toggle never fired). Read the real state from
+    aria-checked, click only when it differs, and confirm the flip (re-finding the
+    element each time to survive grid re-renders).
+    """
+
+    def find():
+        elements = driver.find_elements(By.XPATH, SEL["excused_checkbox"])
+        return elements[0] if elements else None
+
+    if find() is None:
         if on:
-            raise RuntimeError("excused checkbox not found")
+            raise RuntimeError("'출석인정' 체크박스를 찾을 수 없습니다")
         return
 
-    checkbox = checkboxes[0]
-    if checkbox.is_selected() != on:
-        driver.execute_script("arguments[0].click();", checkbox)
-        time.sleep(0.2)
+    def is_on() -> bool:
+        element = find()
+        return element is not None and (element.get_attribute("aria-checked") or "").lower() == "true"
+
+    for _ in range(3):
+        if is_on() == on:
+            return
+        element = find()
+        if element is None:
+            break
+        driver.execute_script("arguments[0].click();", element)
+        try:
+            _wait(driver, 3).until(lambda _d: is_on() == on)
+            return
+        except Exception:
+            continue
+
+    if is_on() != on:
+        raise RuntimeError(f"'출석인정' 체크박스를 {'켜지' if on else '끄지'} 못했습니다")
 
 
 def click_reset(driver: WebDriver) -> None:

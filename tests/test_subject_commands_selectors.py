@@ -344,3 +344,67 @@ def test_click_attendance_cell_clicks_empty_absent_cell_once(monkeypatch):
     assert result is True  # 새로 찍음
     assert clicked == [cell]
     assert verified == [3]
+
+
+def test_excused_checkbox_selector_targets_label():
+    # Must single out the '출석인정' checkbox, not any role=checkbox div.
+    assert "출석인정" in SEL["excused_checkbox"]
+    assert "@role='checkbox'" in SEL["excused_checkbox"]
+
+
+class _FakeExcusedCheckbox:
+    def __init__(self, checked=False):
+        self._checked = checked
+
+    def get_attribute(self, name):
+        if name == "aria-checked":
+            return "true" if self._checked else "false"
+        if name == "aria-label":
+            return "출석인정"
+        return None
+
+
+class _ExcusedDriver:
+    def __init__(self, checked=False):
+        self.cb = _FakeExcusedCheckbox(checked)
+        self.clicks = 0
+
+    def find_elements(self, _by, _xpath):
+        return [self.cb]
+
+    def execute_script(self, script, *args):
+        if "click" in script and args:
+            self.clicks += 1
+            self.cb._checked = not self.cb._checked  # NEIS toggles aria-checked
+
+
+def _patch_excused_wait(monkeypatch):
+    # The off-toggle was broken because is_selected() is always False on a <div>;
+    # ensure we now drive it off aria-checked. The fake _wait just resolves.
+    monkeypatch.setattr(subject_commands, "_wait", lambda *_a, **_k: _FakeWait(None))
+
+
+def test_ensure_excused_mode_turns_on_from_off(monkeypatch):
+    _patch_excused_wait(monkeypatch)
+    driver = _ExcusedDriver(checked=False)
+    subject_commands.ensure_excused_mode(driver, True)
+    assert driver.clicks == 1
+    assert driver.cb._checked is True
+
+
+def test_ensure_excused_mode_turns_off_from_on(monkeypatch):
+    _patch_excused_wait(monkeypatch)
+    driver = _ExcusedDriver(checked=True)
+    subject_commands.ensure_excused_mode(driver, False)
+    assert driver.clicks == 1          # previously 0 — the off-toggle bug
+    assert driver.cb._checked is False
+
+
+def test_ensure_excused_mode_is_noop_when_already_in_state(monkeypatch):
+    _patch_excused_wait(monkeypatch)
+    on_driver = _ExcusedDriver(checked=True)
+    subject_commands.ensure_excused_mode(on_driver, True)
+    assert on_driver.clicks == 0
+    off_driver = _ExcusedDriver(checked=False)
+    subject_commands.ensure_excused_mode(off_driver, False)
+    assert off_driver.clicks == 0
