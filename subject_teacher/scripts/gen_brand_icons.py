@@ -56,7 +56,7 @@ def main() -> None:
 
     # favicon.ico (multi-size) for both apps
     ico_base = draw_icon(256, full_bleed=False)
-    ico_sizes = [(16, 16), (32, 32), (48, 48), (64, 64)]
+    ico_sizes = [(16, 16), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)]
     ico_base.save(os.path.join(pwa, "favicon.ico"), sizes=ico_sizes)
     ico_base.save(os.path.join(desk, "favicon.ico"), sizes=ico_sizes)
 

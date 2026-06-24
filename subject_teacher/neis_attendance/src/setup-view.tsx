@@ -42,7 +42,7 @@ export const BasicsView = ({ settings, setSettings, driveUser, appendLog, loadSe
         <Icon name="gear" size={16}/>
         <span className="title">기본 정보</span>
         <div className="topbar-actions">
-          <button className="tb-btn primary" onClick={saveSettings}>
+          <button className="tb-btn primary" onClick={() => saveSettings()}>
             <Icon name="check" size={14}/> 저장
           </button>
         </div>

@@ -120,6 +120,25 @@ h1, h2, h3, h4 { margin: 0; font-family: var(--font-disp); letter-spacing: -0.01
   color: var(--fg-3); cursor: pointer;
 }
 .sb-collapse:hover { background: var(--hover); color: var(--fg-2); }
+
+/* Toast — visible result for menu actions (저장/불러오기/가져오기 등) */
+.app-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  z-index: 60;
+  max-width: 70vw;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background: #1C1C1E;
+  box-shadow: 0 10px 30px rgba(0,0,0,.28);
+}
+.app-toast.ok  { background: #1B7A33; }
+.app-toast.err { background: #C42017; }
 [data-sidebar="collapsed"] .sb-name-wrap { display: none; }
 [data-sidebar="collapsed"] .sb-collapse { margin-left: 0; }
 

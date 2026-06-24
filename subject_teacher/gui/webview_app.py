@@ -36,4 +36,19 @@ def start() -> None:
         background_color="#F2F2F7",
     )
     api.set_window(window)
-    webview.start(debug=False)
+
+    # Window / taskbar icon (체크온). pywebview has no per-tab favicon — a
+    # chromeless window shows no HTML <link rel=icon> — so set the window icon
+    # explicitly. The packaged EXE icon is set separately in the PyInstaller spec.
+    here = Path(__file__).resolve().parent
+    icon_path = here.parent / "neis_attendance" / "dist" / "favicon.ico"
+    if not icon_path.exists():
+        icon_path = here.parent / "neis_attendance" / "public" / "favicon.ico"
+    try:
+        if icon_path.exists():
+            webview.start(debug=False, icon=str(icon_path))
+        else:
+            webview.start(debug=False)
+    except TypeError:
+        # Older pywebview without the `icon` parameter.
+        webview.start(debug=False)

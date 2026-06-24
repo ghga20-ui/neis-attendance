@@ -71,8 +71,19 @@ function App() {
     [timetable, JSON.stringify(settings.assignedLessons || [])],
   );
 
+  // Visible feedback for menu actions. The log dock is hidden by default, so
+  // 저장/불러오기/가져오기 results were invisible; surface 완료/오류 as a toast.
+  const [toast, setToast] = useState<any>(null);
+  const toastTimer = React.useRef<any>(null);
   const appendLog = (lv, msg) => {
     setLogLines(l => [...l, { ts: now(), lv, msg }]);
+    // Stay quiet during a NEIS run (the progress bar already shows that);
+    // otherwise pop a toast so button results are visible without the log.
+    if (!running && (lv === "완료" || lv === "오류")) {
+      setToast({ lv, msg });
+      if (toastTimer.current) window.clearTimeout(toastTimer.current);
+      toastTimer.current = window.setTimeout(() => setToast(null), 2800);
+    }
   };
   const clearLog = () => setLogLines([]);
 
@@ -445,7 +456,7 @@ function App() {
     <div className="app">
       <aside className="sidebar">
         <div className="sb-head">
-          <div className="sb-logo"><Icon name="school" size={22}/></div>
+          <div className="sb-logo"><Icon name="check" size={22}/></div>
           <div className="sb-name-wrap">
             <div className="sb-name">체크온</div>
             <div className="sb-sub">교과 출결</div>
@@ -495,6 +506,9 @@ function App() {
         {page === "connect"   && <ConnectionView driveUser={driveUser} reconnect={reconnect} reconnecting={reconnecting} loadSetupData={loadSetupData}/>}
       </main>
 
+      {toast && (
+        <div className={`app-toast ${toast.lv === "오류" ? "err" : "ok"}`} role="status">{toast.msg}</div>
+      )}
       {logOpen && <LogDock lines={logLines} onClose={() => setLogOpen(false)} clear={clearLog}/>}
     </div>
   );

@@ -643,16 +643,16 @@ class Api:
     def import_students_file(self, class_key: str) -> str:
         try:
             if not class_key:
-                raise ValueError("癒쇱? ?숆툒???좏깮?섍굅??異붽???二쇱꽭??")
+                raise ValueError("먼저 학급을 선택하거나 추가해 주세요.")
             if self._window is None:
-                raise RuntimeError("?뚯씪 ?좏깮 李쎌쓣 ?????놁뒿?덈떎.")
+                raise RuntimeError("파일 선택 창을 열 수 없습니다.")
 
             import webview
 
             paths = self._window.create_file_dialog(
                 webview.OPEN_DIALOG,
                 allow_multiple=False,
-                file_types=("?숈깮 紐낅? (*.csv;*.xlsx)", "CSV (*.csv)", "Excel (*.xlsx)"),
+                file_types=("학생 명부 (*.csv;*.xlsx)", "CSV (*.csv)", "Excel (*.xlsx)"),
             )
             if not paths:
                 return json.dumps({"cancelled": True}, ensure_ascii=False)
